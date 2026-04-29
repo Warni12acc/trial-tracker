@@ -6,20 +6,23 @@
   <title>Trial Tracker — Pilote</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
       --orange: #E8500A;
       --orange-dark: #B83D07;
-      --orange-glow: rgba(232, 80, 10, 0.18);
+      --orange-glow: rgba(232,80,10,0.15);
       --bg: #0E0E0E;
       --surface: #1A1A1A;
-      --surface2: #242424;
+      --surface2: #222222;
       --border: rgba(255,255,255,0.08);
       --text: #F0EDE8;
       --muted: #888580;
       --green: #3DBA6A;
       --red: #E24B4A;
-      --radius: 16px;
+      --amber: #F0A827;
+      --blue: #4A9EE8;
+      --radius: 14px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -28,333 +31,420 @@
       font-family: 'DM Sans', sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-      min-height: 100dvh;
+      height: 100vh; height: 100dvh;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
     }
 
+    /* ══ HEADER ══ */
     header {
-      padding: 20px 24px 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding: 16px 18px 12px;
       border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 200;
+      background: var(--bg);
     }
+
+    .burger {
+      width: 36px; height: 36px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 5px; cursor: pointer; border: none;
+      background: transparent; padding: 4px;
+      -webkit-appearance: none;
+    }
+    .burger span {
+      display: block; width: 22px; height: 2px;
+      background: var(--text); border-radius: 2px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+    .burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .burger.open span:nth-child(2) { opacity: 0; }
+    .burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
     .logo {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 22px;
-      letter-spacing: 2px;
+      font-size: 22px; letter-spacing: 2.5px;
       color: var(--orange);
+      position: absolute; left: 50%; transform: translateX(-50%);
     }
 
     .session-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--muted);
-      background: var(--surface);
-      padding: 5px 10px;
-      border-radius: 100px;
-      border: 1px solid var(--border);
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 500; color: var(--muted);
+      background: var(--surface); padding: 5px 10px;
+      border-radius: 100px; border: 1px solid var(--border);
     }
-
-    .session-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--muted);
-      transition: background 0.3s;
-    }
-
+    .session-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
     .session-dot.active { background: var(--green); box-shadow: 0 0 6px var(--green); }
 
-    main {
-      flex: 1;
-      padding: 24px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+    /* ══ DRAWER MENU ══ */
+    .drawer-overlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.6);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s;
+      backdrop-filter: blur(4px);
     }
+    .drawer-overlay.open { opacity: 1; pointer-events: all; }
 
-    /* --- BIG SEND BUTTON --- */
-    .send-zone {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 20px;
+    .drawer {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 300px; z-index: 400;
       background: var(--surface);
-      border-radius: 24px;
-      border: 1px solid var(--border);
-      overflow: hidden;
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
     }
+    .drawer.open { transform: translateX(0); }
 
-    .send-zone::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 50% 50%, var(--orange-glow) 0%, transparent 70%);
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.4s;
+    .drawer-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
     }
-
-    .send-zone.sending::before { opacity: 1; }
-
-    .send-btn {
-      width: 140px;
-      height: 140px;
-      border-radius: 50%;
-      border: 2px solid var(--orange);
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      color: var(--text);
-      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-      position: relative;
-      overflow: hidden;
-      appearance: none;
+    .drawer-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px; letter-spacing: 2px; color: var(--orange);
+    }
+    .drawer-close {
+      width: 30px; height: 30px; border-radius: 8px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--muted); cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
       -webkit-appearance: none;
     }
 
-    .send-btn::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: var(--orange);
-      transform: scale(0);
-      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    .drawer-body { flex: 1; overflow-y: auto; padding: 16px; }
+
+    .drawer-section-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--muted); margin-bottom: 10px; padding: 0 2px;
     }
 
-    .send-btn:active { transform: scale(0.94); }
-    .send-btn.sending::before { transform: scale(1); }
-
-    .send-btn .btn-content {
+    /* Session cards in drawer */
+    .session-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px; margin-bottom: 10px;
+      cursor: pointer; transition: border-color 0.2s;
       position: relative;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
+    }
+    .session-card:active { border-color: var(--orange); }
+    .session-card.active-session { border-color: rgba(232,80,10,0.5); }
+
+    .sc-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+    .sc-name { font-weight: 600; font-size: 14px; }
+    .sc-type {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--orange); background: var(--orange-glow);
+      padding: 2px 7px; border-radius: 100px;
+    }
+    .sc-date { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .sc-stats { display: flex; gap: 12px; }
+    .sc-stat { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+    .sc-stat strong { color: var(--text); }
+
+    .sc-delete {
+      position: absolute; top: 10px; right: 36px;
+      width: 24px; height: 24px; border-radius: 6px;
+      border: none; background: transparent;
+      color: var(--red); cursor: pointer; opacity: 0.5;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; -webkit-appearance: none;
+    }
+    .sc-delete:active { opacity: 1; }
+
+    .sc-load {
+      position: absolute; top: 10px; right: 10px;
+      width: 24px; height: 24px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-appearance: none;
     }
 
-    .send-btn svg { width: 36px; height: 36px; transition: transform 0.3s; }
-    .send-btn.sending svg { transform: scale(0.85); }
+    .empty-state {
+      text-align: center; padding: 40px 20px;
+      color: var(--muted); font-size: 13px; line-height: 1.8;
+    }
+    .empty-state svg { margin-bottom: 12px; opacity: 0.4; }
 
-    .send-btn .btn-label {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 15px;
-      letter-spacing: 2px;
+    /* ══ MAIN SCROLL AREA ══ */
+    main {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      display: flex; flex-direction: column;
+      scrollbar-width: none;
+    }
+    main::-webkit-scrollbar { display: none; }
+
+    /* ══ IMPORT SECTION ══ */
+    .import-section {
+      padding: 16px 16px 0;
+      display: flex; flex-direction: column; gap: 10px;
     }
 
-    .send-status {
-      margin-top: 20px;
-      text-align: center;
-      min-height: 44px;
-    }
-
-    .send-status .status-text {
-      font-size: 15px;
-      font-weight: 500;
-      color: var(--muted);
-      transition: color 0.3s;
-    }
-
-    .send-status .status-text.success { color: var(--green); }
-    .send-status .status-text.error { color: var(--red); }
-    .send-status .status-text.sending { color: var(--orange); }
-
-    .send-status .coords-line {
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 6px;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .send-status .coords-line.visible { opacity: 1; }
-
-    /* --- CARDS GRID --- */
-    .cards-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-    }
-
-    .card .card-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-
-    .card .card-value {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 22px;
-      letter-spacing: 1px;
-      color: var(--text);
-      line-height: 1;
-    }
-
-    .card .card-sub {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    /* --- GPX SECTION --- */
     .section-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--muted);
-      margin-bottom: 8px;
-      padding: 0 2px;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--muted); padding: 0 2px;
     }
 
-    .gpx-drop {
-      border: 1.5px dashed rgba(255,255,255,0.15);
-      border-radius: var(--radius);
-      padding: 24px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      background: transparent;
+    .import-tabs {
+      display: flex; gap: 6px;
     }
 
-    .gpx-drop:hover, .gpx-drop.over {
-      border-color: var(--orange);
+    .import-tab {
+      flex: 1; padding: 9px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); font-family: 'DM Sans', sans-serif;
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s; -webkit-appearance: none;
+    }
+    .import-tab.active {
+      border-color: var(--orange); color: var(--orange);
       background: var(--orange-glow);
     }
 
-    .gpx-drop svg { width: 28px; height: 28px; margin-bottom: 10px; color: var(--muted); }
-    .gpx-drop .drop-text { font-size: 14px; color: var(--muted); }
-    .gpx-drop .drop-sub { font-size: 12px; color: rgba(136,133,128,0.6); margin-top: 4px; }
+    .import-panel { display: none; }
+    .import-panel.active { display: block; }
 
-    .gpx-drop.loaded {
-      border-style: solid;
-      border-color: rgba(61,186,106,0.4);
-      background: rgba(61,186,106,0.06);
+    /* GPX drop */
+    .gpx-drop {
+      border: 1.5px dashed rgba(255,255,255,0.12);
+      border-radius: var(--radius); padding: 20px;
+      text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
     }
-
-    .gpx-drop.loaded svg { color: var(--green); }
+    .gpx-drop:hover { border-color: var(--orange); background: var(--orange-glow); }
+    .gpx-drop.loaded { border-style: solid; border-color: rgba(61,186,106,0.4); background: rgba(61,186,106,0.06); }
+    .gpx-drop svg { margin-bottom: 8px; }
+    .gpx-drop .drop-text { font-size: 13px; color: var(--muted); }
+    .gpx-drop .drop-sub { font-size: 11px; color: rgba(136,133,128,0.6); margin-top: 4px; }
     .gpx-drop.loaded .drop-text { color: var(--green); }
-
     input[type="file"] { display: none; }
 
-    /* --- END SESSION --- */
-    .end-btn {
-      width: 100%;
-      padding: 16px;
-      border: 1px solid rgba(226,75,74,0.3);
-      border-radius: var(--radius);
-      background: transparent;
-      color: var(--red);
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: background 0.2s;
-      appearance: none;
+    /* Session name input */
+    .session-name-row {
+      display: flex; gap: 8px; margin-top: 8px;
+    }
+    .text-input {
+      flex: 1; padding: 10px 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 13px;
+      outline: none; transition: border-color 0.2s;
+    }
+    .text-input:focus { border-color: rgba(232,80,10,0.5); }
+    .text-input::placeholder { color: var(--muted); }
+
+    /* Strava input */
+    .strava-wrap { display: flex; flex-direction: column; gap: 8px; }
+    .strava-note {
+      font-size: 11px; color: var(--muted); line-height: 1.6;
+      background: var(--surface); border-radius: 10px;
+      padding: 10px 12px; border: 1px solid var(--border);
+    }
+    .strava-note a { color: var(--orange); text-decoration: none; }
+    .btn-strava {
+      padding: 11px; border-radius: 10px;
+      border: 1px solid rgba(252,76,2,0.4);
+      background: rgba(252,76,2,0.08);
+      color: #FC4C02; font-family: 'DM Sans', sans-serif;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
       -webkit-appearance: none;
     }
 
-    .end-btn:active { background: rgba(226,75,74,0.1); }
+    /* ══ MAP SECTION ══ */
+    .map-section {
+      margin: 12px 16px 0;
+      border-radius: var(--radius); overflow: hidden;
+      border: 1px solid var(--border);
+      display: none; flex-direction: column;
+    }
+    .map-section.visible { display: flex; }
 
-    /* --- ANIMATIONS --- */
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    #piloteMap { height: 160px; }
+    .leaflet-tile-pane { filter: saturate(0.6) brightness(0.8); }
+
+    /* Elevation mini */
+    .elev-mini-wrap { height: 70px; position: relative; background: var(--surface2); }
+    #elevMini { width: 100%; height: 100%; display: block; }
+
+    /* ══ BIG SEND BUTTON ══ */
+    .send-section {
+      padding: 20px 16px 16px;
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
     }
 
-    .spinner {
-      display: none;
-      width: 20px; height: 20px;
-      border: 2px solid rgba(255,255,255,0.2);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      margin: 0 auto 6px;
+    .send-zone {
+      width: 100%; position: relative;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 32px 20px; background: var(--surface);
+      border-radius: 20px; border: 1px solid var(--border); overflow: hidden;
     }
+    .send-zone::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% 50%, var(--orange-glow) 0%, transparent 70%);
+      pointer-events: none; opacity: 0; transition: opacity 0.4s;
+    }
+    .send-zone.sending::before { opacity: 1; }
 
-    .spinner.visible { display: block; }
+    .send-btn {
+      width: 120px; height: 120px; border-radius: 50%;
+      border: 2px solid var(--orange); background: transparent;
+      cursor: pointer; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px;
+      color: var(--text); position: relative; overflow: hidden;
+      transition: transform 0.15s; -webkit-appearance: none;
+    }
+    .send-btn::before {
+      content: ''; position: absolute; inset: 0; border-radius: 50%;
+      background: var(--orange); transform: scale(0);
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .send-btn:active { transform: scale(0.93); }
+    .send-btn.sending::before { transform: scale(1); }
+    .send-btn .btn-content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .send-btn svg { width: 32px; height: 32px; }
+    .send-btn .btn-label { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px; }
 
-    /* --- PULSE RING on send btn when sending --- */
     @keyframes ring-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(232,80,10,0.4); }
-      70% { box-shadow: 0 0 0 18px rgba(232,80,10,0); }
+      0%   { box-shadow: 0 0 0 0 rgba(232,80,10,0.4); }
+      70%  { box-shadow: 0 0 0 16px rgba(232,80,10,0); }
       100% { box-shadow: 0 0 0 0 rgba(232,80,10,0); }
     }
-
     .send-btn.sending { animation: ring-pulse 1.2s ease-out infinite; }
 
-    /* --- HISTORY --- */
-    .history-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    .send-status { text-align: center; min-height: 36px; }
+    .status-text { font-size: 14px; font-weight: 500; color: var(--muted); transition: color 0.3s; }
+    .status-text.success { color: var(--green); }
+    .status-text.error   { color: var(--red); }
+    .status-text.sending { color: var(--orange); }
+
+    .coords-line {
+      font-family: 'DM Mono', monospace; font-size: 11px;
+      color: var(--muted); margin-top: 4px;
+      opacity: 0; transition: opacity 0.3s;
     }
+    .coords-line.visible { opacity: 1; }
+
+    /* Stats row */
+    .stats-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; width: 100%;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px;
+    }
+    .stat-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 4px; }
+    .stat-card .val { font-family: 'Bebas Neue', sans-serif; font-size: 20px; line-height: 1; }
+    .stat-card .sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* ══ HISTORY ACCORDION ══ */
+    .history-section { padding: 0 16px 16px; }
+
+    .accordion-btn {
+      width: 100%; padding: 12px 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+      cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+      -webkit-appearance: none; transition: border-color 0.2s;
+    }
+    .accordion-btn .acc-left { display: flex; align-items: center; gap: 8px; }
+    .accordion-btn .acc-count {
+      background: var(--orange); color: #fff;
+      font-size: 10px; font-weight: 700; padding: 1px 6px;
+      border-radius: 100px; min-width: 18px; text-align: center;
+    }
+    .accordion-btn .acc-arrow {
+      transition: transform 0.3s;
+      color: var(--muted);
+    }
+    .accordion-btn.open .acc-arrow { transform: rotate(180deg); }
+    .accordion-btn.open { border-color: rgba(232,80,10,0.3); border-radius: 12px 12px 0 0; }
+
+    .accordion-body {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1);
+      border: 1px solid rgba(232,80,10,0.2);
+      border-top: none; border-radius: 0 0 12px 12px;
+      background: var(--surface2);
+    }
+    .accordion-body.open { max-height: 300px; overflow-y: auto; }
 
     .history-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 14px;
-      background: var(--surface);
-      border-radius: 10px;
-      border: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; border-bottom: 1px solid var(--border);
     }
+    .history-item:last-child { border-bottom: none; }
+    .h-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
+    .h-time { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); flex-shrink: 0; min-width: 42px; }
+    .h-coords { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .h-acc { font-size: 10px; color: var(--muted); flex-shrink: 0; }
 
-    .history-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--orange);
-      flex-shrink: 0;
+    /* ══ END SESSION ══ */
+    .end-section { padding: 0 16px 28px; }
+    .end-btn {
+      width: 100%; padding: 14px;
+      border: 1px solid rgba(226,75,74,0.3); border-radius: var(--radius);
+      background: transparent; color: var(--red);
+      font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s; -webkit-appearance: none;
     }
+    .end-btn:active { background: rgba(226,75,74,0.1); }
 
-    .history-time {
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      color: var(--muted);
-      flex-shrink: 0;
+    /* ══ SPINNER ══ */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: none; width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.2); border-top-color: white;
+      border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 4px;
     }
-
-    .history-coords {
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      color: var(--text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .spacer { flex: 1; }
+    .spinner.visible { display: block; }
   </style>
 </head>
 <body>
+
+  <!-- DRAWER OVERLAY -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+  <!-- DRAWER -->
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <span class="drawer-title">Mes Sorties</span>
+      <button class="drawer-close" onclick="closeDrawer()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="drawer-body">
+      <p class="drawer-section-label">Historique</p>
+      <div id="sessionsList">
+        <div class="empty-state">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M12 8v4M12 16h.01"/></svg>
+          <div>Aucune sortie sauvegardée.<br>Termine une session pour la voir ici.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEADER -->
   <header>
+    <button class="burger" id="burgerBtn" onclick="toggleDrawer()">
+      <span></span><span></span><span></span>
+    </button>
     <span class="logo">Trial Tracker</span>
     <div class="session-badge">
       <div class="session-dot" id="sessionDot"></div>
@@ -362,247 +452,550 @@
     </div>
   </header>
 
-  <main>
-    <!-- GPX Upload -->
-    <div>
-      <p class="section-label">Tracé GPX</p>
-      <label class="gpx-drop" id="gpxDrop" for="gpxFile">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4M7 9l5-5 5 5M12 4v11"/>
-        </svg>
-        <div class="drop-text" id="gpxDropText">Charger mon parcours .gpx</div>
-        <div class="drop-sub" id="gpxDropSub">Appuie pour sélectionner le fichier</div>
-      </label>
-      <input type="file" id="gpxFile" accept=".gpx" onchange="uploadGPX(this)">
-    </div>
+  <!-- MAIN -->
+  <main id="mainScroll">
 
-    <!-- Big send button -->
-    <div class="send-zone" id="sendZone">
-      <button class="send-btn" id="sendBtn" onclick="sendPosition()">
-        <div class="btn-content">
-          <svg id="sendIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+    <!-- IMPORT -->
+    <div class="import-section">
+      <p class="section-label">Charger un parcours</p>
+
+      <div class="import-tabs">
+        <button class="import-tab active" id="tabGpx" onclick="switchTab('gpx')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+          Fichier GPX
+        </button>
+        <button class="import-tab" id="tabStrava" onclick="switchTab('strava')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Strava
+        </button>
+      </div>
+
+      <!-- GPX Panel -->
+      <div class="import-panel active" id="panelGpx">
+        <label class="gpx-drop" id="gpxDrop" for="gpxFile">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" color="var(--muted)">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
           </svg>
-          <span class="btn-label">Envoyer</span>
+          <div class="drop-text" id="gpxDropText">Sélectionner un fichier .gpx</div>
+          <div class="drop-sub" id="gpxDropSub">Komoot, Wikiloc, Garmin, AllTrails…</div>
+        </label>
+        <input type="file" id="gpxFile" accept=".gpx" onchange="uploadGPX(this)">
+        <div class="session-name-row">
+          <input type="text" class="text-input" id="sessionName" placeholder="Nom de la sortie…">
         </div>
+      </div>
+
+      <!-- Strava Panel -->
+      <div class="import-panel" id="panelStrava">
+        <div class="strava-wrap">
+          <div class="strava-note">
+            Sur Strava, ouvre l'activité ou le segment → <strong>···</strong> → <strong>Exporter le GPX</strong>. Enregistre le fichier puis charge-le avec l'onglet <em>Fichier GPX</em>.
+          </div>
+          <button class="btn-strava" onclick="switchTab('gpx')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Revenir à l'import GPX
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAP + ELEVATION -->
+    <div class="map-section" id="mapSection">
+      <div id="piloteMap"></div>
+      <div class="elev-mini-wrap">
+        <canvas id="elevMini"></canvas>
+      </div>
+    </div>
+
+    <!-- SEND BUTTON -->
+    <div class="send-section">
+      <div class="send-zone" id="sendZone">
+        <button class="send-btn" id="sendBtn" onclick="sendPosition()">
+          <div class="btn-content">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+            </svg>
+            <span class="btn-label">Envoyer</span>
+          </div>
+        </button>
+        <div class="send-status">
+          <div class="spinner" id="spinner"></div>
+          <div class="status-text" id="statusText">Appuie pour partager ta position</div>
+          <div class="coords-line" id="coordsLine"></div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="lbl">Envois</div>
+          <div class="val" id="sendCount">0</div>
+          <div class="sub">cette session</div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">Dernier envoi</div>
+          <div class="val" id="lastSendTime">—</div>
+          <div class="sub" id="lastAccuracy">précision —</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY ACCORDION -->
+    <div class="history-section" id="historySection" style="display:none;">
+      <button class="accordion-btn" id="accordionBtn" onclick="toggleAccordion()">
+        <span class="acc-left">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3"/></svg>
+          Positions envoyées
+          <span class="acc-count" id="accCount">0</span>
+        </span>
+        <svg class="acc-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
       </button>
-
-      <div class="send-status">
-        <div class="spinner" id="spinner"></div>
-        <div class="status-text" id="statusText">Appuie pour partager ta position</div>
-        <div class="coords-line" id="coordsLine">—</div>
+      <div class="accordion-body" id="accordionBody">
+        <div id="historyList"></div>
       </div>
     </div>
 
-    <!-- Stats row -->
-    <div class="cards-row">
-      <div class="card">
-        <div class="card-label">Envois</div>
-        <div class="card-value" id="sendCount">0</div>
-        <div class="card-sub">cette session</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Dernier envoi</div>
-        <div class="card-value" id="lastSendTime">—</div>
-        <div class="card-sub" id="lastAccuracy">précision —</div>
-      </div>
+    <!-- END SESSION -->
+    <div class="end-section">
+      <button class="end-btn" onclick="endSession()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+        </svg>
+        Terminer la session
+      </button>
     </div>
 
-    <!-- History -->
-    <div id="historySection" style="display:none;">
-      <p class="section-label">Historique</p>
-      <div class="history-list" id="historyList"></div>
-    </div>
-
-    <div class="spacer"></div>
-
-    <!-- End session -->
-    <button class="end-btn" onclick="endSession()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/>
-      </svg>
-      Terminer la session
-    </button>
   </main>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const API_URL = window.location.origin;
+  const API_URL = window.location.origin;
 
-    let sendCount = 0;
-    let sessionActive = false;
-    const history = [];
+  let sendCount    = 0;
+  let sessionActive = false;
+  let historyItems  = [];
+  let piloteMap     = null;
+  let gpxLayer      = null;
+  let posMarker     = null;
+  let gpxPoints     = [];
+  let totalDist     = 0;
 
-    // Init - check session state
-    fetch(`${API_URL}/api/position`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.sessionActive) setSessionActive(true);
-      }).catch(() => {});
-
-    function setSessionActive(val) {
-      sessionActive = val;
-      const dot = document.getElementById('sessionDot');
-      const label = document.getElementById('sessionLabel');
-      if (val) {
-        dot.classList.add('active');
-        label.textContent = 'Session active';
-      } else {
-        dot.classList.remove('active');
-        label.textContent = 'Hors session';
-      }
-    }
-
-    async function sendPosition() {
-      const btn = document.getElementById('sendBtn');
-      const zone = document.getElementById('sendZone');
-      const statusText = document.getElementById('statusText');
-      const coordsLine = document.getElementById('coordsLine');
-      const spinner = document.getElementById('spinner');
-
-      if (btn.classList.contains('sending')) return;
-
-      btn.classList.add('sending');
-      zone.classList.add('sending');
-      spinner.classList.add('visible');
-      statusText.textContent = 'Localisation en cours…';
-      statusText.className = 'status-text sending';
-      coordsLine.classList.remove('visible');
-
-      try {
-        const position = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 12000,
-            maximumAge: 0
+  // ── Init ──
+  fetch(`${API_URL}/api/session/active`)
+    .then(r => r.json())
+    .then(d => {
+      if (d.session) {
+        setSessionActive(true);
+        // Restore GPX on map if session has one
+        if (d.session.gpx) {
+          gpxPoints = parseGPX(d.session.gpx);
+          showMapSection();
+          drawMiniElev();
+          drawGPXOnMap(gpxPoints);
+          document.getElementById('gpxDropText').textContent = d.session.name || 'Parcours chargé';
+          document.getElementById('gpxDropSub').textContent  = 'Session active';
+          document.getElementById('gpxDrop').classList.add('loaded');
+          document.getElementById('sessionName').value = d.session.name || '';
+        }
+        if (d.session.breadcrumbs) {
+          sendCount = d.session.breadcrumbs.length;
+          document.getElementById('sendCount').textContent = sendCount;
+          d.session.breadcrumbs.forEach(b => {
+            const t = new Date(b.timestamp);
+            addHistoryItem(
+              t.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}),
+              b.lat, b.lng, b.accuracy
+            );
           });
-        });
-
-        statusText.textContent = 'Envoi au serveur…';
-
-        const { latitude, longitude, accuracy } = position.coords;
-
-        await fetch(`${API_URL}/api/position`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            lat: latitude,
-            lng: longitude,
-            accuracy,
-            timestamp: Date.now()
-          })
-        });
-
-        setSessionActive(true);
-
-        // Update UI
-        sendCount++;
-        document.getElementById('sendCount').textContent = sendCount;
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        document.getElementById('lastSendTime').textContent = timeStr;
-        document.getElementById('lastAccuracy').textContent = `précision ±${Math.round(accuracy)}m`;
-
-        statusText.textContent = 'Position envoyée !';
-        statusText.className = 'status-text success';
-        coordsLine.textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-        coordsLine.classList.add('visible');
-
-        // History
-        addHistory(timeStr, latitude, longitude, accuracy);
-
-        setTimeout(() => {
-          statusText.textContent = 'Appuie pour partager ta position';
-          statusText.className = 'status-text';
-        }, 3000);
-
-      } catch (err) {
-        statusText.textContent = err.code === 1
-          ? 'Géolocalisation refusée'
-          : err.code === 3
-            ? 'Temps dépassé — réessaie'
-            : 'Erreur : ' + (err.message || 'inconnue');
-        statusText.className = 'status-text error';
-        setTimeout(() => {
-          statusText.textContent = 'Appuie pour partager ta position';
-          statusText.className = 'status-text';
-        }, 4000);
-      } finally {
-        btn.classList.remove('sending');
-        zone.classList.remove('sending');
-        spinner.classList.remove('visible');
+        }
       }
+    }).catch(() => {});
+
+  loadSessions();
+
+  // ── DRAWER ──
+  function toggleDrawer() {
+    const drawer  = document.getElementById('drawer');
+    const overlay = document.getElementById('drawerOverlay');
+    const burger  = document.getElementById('burgerBtn');
+    const open    = drawer.classList.toggle('open');
+    overlay.classList.toggle('open', open);
+    burger.classList.toggle('open', open);
+  }
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('drawerOverlay').classList.remove('open');
+    document.getElementById('burgerBtn').classList.remove('open');
+  }
+
+  // ── SESSIONS LIST ──
+  async function loadSessions() {
+    try {
+      const res  = await fetch(`${API_URL}/api/sessions`);
+      const data = await res.json();
+      renderSessions(data.sessions || []);
+    } catch {}
+  }
+
+  function renderSessions(list) {
+    const el = document.getElementById('sessionsList');
+    if (!list.length) {
+      el.innerHTML = `<div class="empty-state">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M12 8v4M12 16h.01"/></svg>
+        <div>Aucune sortie sauvegardée.<br>Termine une session pour la voir ici.</div>
+      </div>`;
+      return;
     }
 
-    function addHistory(time, lat, lng, acc) {
-      history.unshift({ time, lat, lng, acc });
-      if (history.length > 5) history.pop();
+    el.innerHTML = list.map(s => {
+      const date = new Date(s.date).toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'});
+      const dist = s.stats ? `<span class="sc-stat"><strong>${s.stats.dist}</strong> km</span>` : '';
+      const elev = s.stats ? `<span class="sc-stat">D+ <strong>${s.stats.up}</strong>m</span>` : '';
+      return `
+        <div class="session-card" id="sc-${s.id}">
+          <div class="sc-top">
+            <span class="sc-name">${s.name}</span>
+            <span class="sc-type">${s.type}</span>
+          </div>
+          <div class="sc-date">${date}</div>
+          <div class="sc-stats">${dist}${elev}</div>
+          <button class="sc-delete" onclick="deleteSession('${s.id}', event)" title="Supprimer">🗑</button>
+          <button class="sc-load" onclick="loadSession('${s.id}', event)" title="Recharger ce parcours">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+          </button>
+        </div>`;
+    }).join('');
+  }
 
-      const section = document.getElementById('historySection');
-      const list = document.getElementById('historyList');
-      section.style.display = 'block';
-      list.innerHTML = history.map(h => `
-        <div class="history-item">
-          <div class="history-dot"></div>
-          <span class="history-time">${h.time}</span>
-          <span class="history-coords">${h.lat.toFixed(5)}, ${h.lng.toFixed(5)}</span>
-        </div>
-      `).join('');
+  async function deleteSession(id, e) {
+    e.stopPropagation();
+    if (!confirm('Supprimer cette sortie ?')) return;
+    await fetch(`${API_URL}/api/sessions/${id}`, { method: 'DELETE' });
+    loadSessions();
+  }
+
+  async function loadSession(id, e) {
+    e.stopPropagation();
+    try {
+      const res  = await fetch(`${API_URL}/api/sessions/${id}`);
+      const data = await res.json();
+      if (!data.session?.gpx) return alert('Pas de GPX pour cette sortie.');
+
+      // Upload the saved GPX as new session
+      const blob = new Blob([data.session.gpx], { type:'application/gpx+xml' });
+      const file = new File([blob], 'parcours.gpx');
+      const form = new FormData();
+      form.append('gpx', file);
+      form.append('name', data.session.name);
+      form.append('type', data.session.type);
+
+      await fetch(`${API_URL}/api/gpx`, { method:'POST', body: form });
+      gpxPoints = parseGPX(data.session.gpx);
+      showMapSection();
+      drawMiniElev();
+      drawGPXOnMap(gpxPoints);
+      setSessionActive(true);
+
+      document.getElementById('gpxDropText').textContent = data.session.name;
+      document.getElementById('gpxDropSub').textContent  = 'Parcours rechargé';
+      document.getElementById('gpxDrop').classList.add('loaded');
+      document.getElementById('sessionName').value = data.session.name;
+
+      closeDrawer();
+    } catch(err) { alert('Erreur chargement : ' + err.message); }
+  }
+
+  // ── TABS ──
+  function switchTab(tab) {
+    document.getElementById('tabGpx').classList.toggle('active', tab === 'gpx');
+    document.getElementById('tabStrava').classList.toggle('active', tab === 'strava');
+    document.getElementById('panelGpx').classList.toggle('active', tab === 'gpx');
+    document.getElementById('panelStrava').classList.toggle('active', tab === 'strava');
+  }
+
+  // ── GPX UPLOAD ──
+  async function uploadGPX(input) {
+    if (!input.files[0]) return;
+    const drop    = document.getElementById('gpxDrop');
+    const dropTxt = document.getElementById('gpxDropText');
+    const dropSub = document.getElementById('gpxDropSub');
+    dropTxt.textContent = 'Envoi en cours…';
+
+    try {
+      const name    = document.getElementById('sessionName').value || input.files[0].name.replace('.gpx','');
+      const formData = new FormData();
+      formData.append('gpx',  input.files[0]);
+      formData.append('name', name);
+      formData.append('type', 'trail');
+      formData.append('date', new Date().toISOString().split('T')[0]);
+
+      const res = await fetch(`${API_URL}/api/gpx`, { method:'POST', body: formData });
+      if (!res.ok) throw new Error();
+
+      // Parse & display
+      const text = await input.files[0].text();
+      gpxPoints = parseGPX(text);
+      showMapSection();
+      drawMiniElev();
+      drawGPXOnMap(gpxPoints);
+      setSessionActive(true);
+
+      drop.classList.add('loaded');
+      dropTxt.textContent = name;
+      dropSub.textContent = `${gpxPoints.length} points · ${totalDist.toFixed(1)} km`;
+
+    } catch(e) {
+      dropTxt.textContent = 'Erreur — réessaie';
+      dropSub.textContent = '';
+      setTimeout(() => { dropTxt.textContent='Sélectionner un fichier .gpx'; dropSub.textContent='Komoot, Wikiloc, Garmin…'; }, 3000);
     }
+  }
 
-    async function uploadGPX(input) {
-      if (!input.files[0]) return;
+  // ── HAVERSINE ──
+  function haversine(a, b) {
+    const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLng=(b.lng-a.lng)*Math.PI/180;
+    const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+  }
 
-      const drop = document.getElementById('gpxDrop');
-      const dropText = document.getElementById('gpxDropText');
-      const dropSub = document.getElementById('gpxDropSub');
+  // ── PARSE GPX ──
+  function parseGPX(xml) {
+    const doc = new DOMParser().parseFromString(xml,'text/xml');
+    const raw = [];
+    doc.querySelectorAll('trkpt, rtept').forEach(pt => {
+      const eleEl = pt.querySelector('ele');
+      raw.push({ lat:parseFloat(pt.getAttribute('lat')), lng:parseFloat(pt.getAttribute('lon')), ele: eleEl ? parseFloat(eleEl.textContent) : null });
+    });
+    let cum=0;
+    const result = raw.map((p,i) => {
+      if (i>0) cum += haversine(raw[i-1],p);
+      return {...p, dist:cum};
+    });
+    totalDist = cum;
+    return result;
+  }
 
-      dropText.textContent = 'Envoi en cours…';
+  // ── MAP ──
+  function showMapSection() {
+    const sec = document.getElementById('mapSection');
+    sec.classList.add('visible');
+    if (!piloteMap) {
+      piloteMap = L.map('piloteMap', { zoomControl:false, attributionControl:false })
+        .setView([46.6,2.5], 6);
+      L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom:17 }).addTo(piloteMap);
+    }
+  }
 
-      try {
-        const formData = new FormData();
-        formData.append('gpx', input.files[0]);
-        const res = await fetch(`${API_URL}/api/gpx`, { method: 'POST', body: formData });
+  function drawGPXOnMap(pts) {
+    if (!piloteMap || pts.length===0) return;
+    if (gpxLayer) piloteMap.removeLayer(gpxLayer);
+    gpxLayer = L.layerGroup().addTo(piloteMap);
+    const ll = pts.map(p=>[p.lat,p.lng]);
+    L.polyline(ll, { color:'rgba(0,0,0,0.3)', weight:6 }).addTo(gpxLayer);
+    L.polyline(ll, { color:'#E8500A', weight:3, opacity:0.9 }).addTo(gpxLayer);
+    L.circleMarker(ll[0], { radius:6, color:'#3DBA6A', fillColor:'#3DBA6A', fillOpacity:1, weight:2 }).addTo(gpxLayer);
+    L.circleMarker(ll[ll.length-1], { radius:6, color:'#E24B4A', fillColor:'#E24B4A', fillOpacity:1, weight:2 }).addTo(gpxLayer);
+    piloteMap.fitBounds(L.polyline(ll).getBounds(), { padding:[20,20] });
+  }
 
-        if (!res.ok) throw new Error();
+  // ── MINI ELEVATION ──
+  function drawMiniElev(riderIdx) {
+    const canvas = document.getElementById('elevMini');
+    const wrap   = canvas.parentElement;
+    const dpr    = window.devicePixelRatio||1;
+    const W=wrap.clientWidth, H=wrap.clientHeight;
+    if (!W||!H) return;
+    canvas.width=W*dpr; canvas.height=H*dpr;
+    canvas.style.width=W+'px'; canvas.style.height=H+'px';
+    const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,W,H);
 
-        drop.classList.add('loaded');
-        dropText.textContent = input.files[0].name;
-        dropSub.textContent = 'Tracé chargé — ta famille peut le voir';
-        setSessionActive(true);
+    const eles=gpxPoints.map(p=>p.ele??0);
+    const minE=Math.min(...eles), maxE=Math.max(...eles), range=maxE-minE||1;
+    const pad={top:6,right:8,bottom:14,left:34};
+    const cW=W-pad.left-pad.right, cH=H-pad.top-pad.bottom;
 
-      } catch (e) {
-        dropText.textContent = 'Erreur — réessaie';
-        dropSub.textContent = input.files[0]?.name || '';
-        setTimeout(() => {
-          dropText.textContent = 'Charger mon parcours .gpx';
-          dropSub.textContent = 'Appuie pour sélectionner le fichier';
-        }, 3000);
+    const xOf=i=>pad.left+(gpxPoints[i].dist/(totalDist||1))*cW;
+    const yOf=i=>pad.top+(1-(eles[i]-minE)/range)*cH;
+
+    const riderX = riderIdx!=null ? xOf(riderIdx) : pad.left;
+
+    // Fill done
+    const gDone=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
+    gDone.addColorStop(0,'rgba(232,80,10,0.5)'); gDone.addColorStop(1,'rgba(232,80,10,0.03)');
+    ctx.save(); ctx.beginPath(); ctx.rect(0,0,riderX+1,H); ctx.clip();
+    ctx.beginPath(); ctx.moveTo(xOf(0),yOf(0));
+    gpxPoints.forEach((_,i)=>{ if(i)ctx.lineTo(xOf(i),yOf(i)); });
+    ctx.lineTo(riderX,pad.top+cH); ctx.lineTo(pad.left,pad.top+cH); ctx.closePath();
+    ctx.fillStyle=gDone; ctx.fill(); ctx.restore();
+
+    // Fill rest
+    const gRest=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
+    gRest.addColorStop(0,'rgba(136,133,128,0.18)'); gRest.addColorStop(1,'rgba(136,133,128,0.02)');
+    ctx.save(); ctx.beginPath(); ctx.rect(riderX,0,W,H); ctx.clip();
+    ctx.beginPath(); ctx.moveTo(xOf(0),yOf(0));
+    gpxPoints.forEach((_,i)=>{ if(i)ctx.lineTo(xOf(i),yOf(i)); });
+    ctx.lineTo(xOf(gpxPoints.length-1),pad.top+cH); ctx.lineTo(pad.left,pad.top+cH); ctx.closePath();
+    ctx.fillStyle=gRest; ctx.fill(); ctx.restore();
+
+    // Line
+    ctx.beginPath(); ctx.moveTo(xOf(0),yOf(0));
+    gpxPoints.forEach((_,i)=>{ if(i)ctx.lineTo(xOf(i),yOf(i)); });
+    ctx.strokeStyle='#E8500A'; ctx.lineWidth=1.5; ctx.lineJoin='round'; ctx.stroke();
+
+    // Y labels
+    [0,0.5,1].forEach(t=>{
+      const y=pad.top+(1-t)*cH;
+      ctx.fillStyle='rgba(136,133,128,0.7)'; ctx.font='8px DM Sans,sans-serif'; ctx.textAlign='right';
+      ctx.fillText(Math.round(minE+t*range)+'m', pad.left-3, y+3);
+    });
+
+    // X labels
+    ctx.textAlign='center'; ctx.fillStyle='rgba(136,133,128,0.7)'; ctx.font='8px DM Sans,sans-serif';
+    [0,0.5,1].forEach(t=>{
+      const d=t*totalDist; const x=pad.left+(d/(totalDist||1))*cW;
+      ctx.fillText(d.toFixed(1)+'km', x, H-2);
+    });
+
+    // Rider dot
+    if (riderIdx!=null) {
+      const rx=xOf(riderIdx), ry=yOf(riderIdx);
+      ctx.beginPath(); ctx.moveTo(rx,pad.top); ctx.lineTo(rx,pad.top+cH);
+      ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1; ctx.setLineDash([2,3]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(rx,ry,4,0,Math.PI*2);
+      ctx.fillStyle='#fff'; ctx.fill();
+      ctx.strokeStyle='#E8500A'; ctx.lineWidth=2; ctx.stroke();
+    }
+  }
+
+  // ── SEND POSITION ──
+  async function sendPosition() {
+    const btn      = document.getElementById('sendBtn');
+    const zone     = document.getElementById('sendZone');
+    const statusTxt= document.getElementById('statusText');
+    const coordsLn = document.getElementById('coordsLine');
+    const spinner  = document.getElementById('spinner');
+
+    if (btn.classList.contains('sending')) return;
+    btn.classList.add('sending'); zone.classList.add('sending');
+    spinner.classList.add('visible');
+    statusTxt.textContent='Localisation…'; statusTxt.className='status-text sending';
+    coordsLn.classList.remove('visible');
+
+    try {
+      const pos = await new Promise((res,rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy:true, timeout:12000, maximumAge:0 })
+      );
+      statusTxt.textContent='Envoi…';
+      const { latitude:lat, longitude:lng, accuracy } = pos.coords;
+
+      await fetch(`${API_URL}/api/position`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ lat, lng, accuracy, timestamp:Date.now() })
+      });
+
+      setSessionActive(true);
+      sendCount++;
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+
+      document.getElementById('sendCount').textContent  = sendCount;
+      document.getElementById('lastSendTime').textContent = timeStr;
+      document.getElementById('lastAccuracy').textContent = `précision ±${Math.round(accuracy)}m`;
+
+      statusTxt.textContent='Position envoyée !'; statusTxt.className='status-text success';
+      coordsLn.textContent=`${lat.toFixed(5)}, ${lng.toFixed(5)}`; coordsLn.classList.add('visible');
+
+      addHistoryItem(timeStr, lat, lng, accuracy);
+
+      // Update marker & elevation on pilote map
+      if (piloteMap) {
+        if (posMarker) posMarker.setLatLng([lat,lng]);
+        else posMarker = L.circleMarker([lat,lng],{radius:7,color:'#E24B4A',fillColor:'#E24B4A',fillOpacity:1,weight:2}).addTo(piloteMap);
       }
-    }
-
-    async function endSession() {
-      if (!confirm('Terminer la session de suivi ?')) return;
-      try {
-        await fetch(`${API_URL}/api/session/end`, { method: 'POST' });
-        setSessionActive(false);
-        sendCount = 0;
-        document.getElementById('sendCount').textContent = '0';
-        document.getElementById('lastSendTime').textContent = '—';
-        document.getElementById('lastAccuracy').textContent = 'précision —';
-        document.getElementById('historySection').style.display = 'none';
-
-        const drop = document.getElementById('gpxDrop');
-        drop.classList.remove('loaded');
-        document.getElementById('gpxDropText').textContent = 'Charger mon parcours .gpx';
-        document.getElementById('gpxDropSub').textContent = 'Appuie pour sélectionner le fichier';
-
-        document.getElementById('statusText').textContent = 'Appuie pour partager ta position';
-        document.getElementById('coordsLine').classList.remove('visible');
-      } catch (e) {
-        alert('Erreur lors de la fin de session');
+      if (gpxPoints.length>0) {
+        let best=0, bestD=Infinity;
+        gpxPoints.forEach((p,i)=>{ const d=(p.lat-lat)**2+(p.lng-lng)**2; if(d<bestD){bestD=d;best=i;} });
+        drawMiniElev(best);
       }
+
+      setTimeout(()=>{ statusTxt.textContent='Appuie pour partager ta position'; statusTxt.className='status-text'; }, 3000);
+
+    } catch(err) {
+      statusTxt.textContent = err.code===1 ? 'Géolocalisation refusée' : err.code===3 ? 'Temps dépassé' : 'Erreur : '+(err.message||'inconnue');
+      statusTxt.className='status-text error';
+      setTimeout(()=>{ statusTxt.textContent='Appuie pour partager ta position'; statusTxt.className='status-text'; }, 4000);
+    } finally {
+      btn.classList.remove('sending'); zone.classList.remove('sending'); spinner.classList.remove('visible');
     }
+  }
+
+  // ── HISTORY ──
+  function addHistoryItem(time, lat, lng, acc) {
+    historyItems.unshift({ time, lat, lng, acc });
+    if (historyItems.length > 20) historyItems.pop();
+
+    document.getElementById('historySection').style.display='block';
+    document.getElementById('accCount').textContent = historyItems.length;
+
+    document.getElementById('historyList').innerHTML = historyItems.map(h=>`
+      <div class="history-item">
+        <div class="h-dot"></div>
+        <span class="h-time">${h.time}</span>
+        <span class="h-coords">${h.lat.toFixed(5)}, ${h.lng.toFixed(5)}</span>
+        <span class="h-acc">±${Math.round(h.acc)}m</span>
+      </div>
+    `).join('');
+  }
+
+  function toggleAccordion() {
+    const btn  = document.getElementById('accordionBtn');
+    const body = document.getElementById('accordionBody');
+    btn.classList.toggle('open');
+    body.classList.toggle('open');
+  }
+
+  // ── SESSION STATE ──
+  function setSessionActive(val) {
+    sessionActive = val;
+    const dot = document.getElementById('sessionDot');
+    const lbl = document.getElementById('sessionLabel');
+    if (val) { dot.classList.add('active'); lbl.textContent='Session active'; }
+    else      { dot.classList.remove('active'); lbl.textContent='Hors session'; }
+  }
+
+  // ── END SESSION ──
+  async function endSession() {
+    if (!confirm('Terminer la session de suivi ?')) return;
+    await fetch(`${API_URL}/api/session/end`, { method:'POST' });
+
+    setSessionActive(false);
+    sendCount=0; historyItems=[];
+    document.getElementById('sendCount').textContent='0';
+    document.getElementById('lastSendTime').textContent='—';
+    document.getElementById('lastAccuracy').textContent='précision —';
+    document.getElementById('historySection').style.display='none';
+    document.getElementById('historyList').innerHTML='';
+    document.getElementById('accCount').textContent='0';
+    document.getElementById('accordionBtn').classList.remove('open');
+    document.getElementById('accordionBody').classList.remove('open');
+    document.getElementById('gpxDrop').classList.remove('loaded');
+    document.getElementById('gpxDropText').textContent='Sélectionner un fichier .gpx';
+    document.getElementById('gpxDropSub').textContent='Komoot, Wikiloc, Garmin, AllTrails…';
+    document.getElementById('sessionName').value='';
+    document.getElementById('mapSection').classList.remove('visible');
+    document.getElementById('statusText').textContent='Appuie pour partager ta position';
+    document.getElementById('coordsLine').classList.remove('visible');
+    gpxPoints=[]; totalDist=0;
+    if (posMarker && piloteMap) { piloteMap.removeLayer(posMarker); posMarker=null; }
+    if (gpxLayer  && piloteMap) { piloteMap.removeLayer(gpxLayer);  gpxLayer=null; }
+
+    loadSessions();
+  }
+
+  window.addEventListener('resize', ()=>{ if(gpxPoints.length>0) drawMiniElev(); });
   </script>
 </body>
 </html>
