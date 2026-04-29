@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Trial Tracker — Pilote</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --orange: #E8500A;
+      --orange-dark: #B83D07;
+      --orange-glow: rgba(232, 80, 10, 0.18);
+      --bg: #0E0E0E;
+      --surface: #1A1A1A;
+      --surface2: #242424;
+      --border: rgba(255,255,255,0.08);
+      --text: #F0EDE8;
+      --muted: #888580;
+      --green: #3DBA6A;
+      --red: #E24B4A;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 20px 24px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 2px;
+      color: var(--orange);
+    }
+
+    .session-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      background: var(--surface);
+      padding: 5px 10px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+    }
+
+    .session-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+    }
+
+    .session-dot.active { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+    main {
+      flex: 1;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* --- BIG SEND BUTTON --- */
+    .send-zone {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      background: var(--surface);
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .send-zone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, var(--orange-glow) 0%, transparent 70%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+
+    .send-zone.sending::before { opacity: 1; }
+
+    .send-btn {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      border: 2px solid var(--orange);
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text);
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .send-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--orange);
+      transform: scale(0);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .send-btn:active { transform: scale(0.94); }
+    .send-btn.sending::before { transform: scale(1); }
+
+    .send-btn .btn-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .send-btn svg { width: 36px; height: 36px; transition: transform 0.3s; }
+    .send-btn.sending svg { transform: scale(0.85); }
+
+    .send-btn .btn-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 15px;
+      letter-spacing: 2px;
+    }
+
+    .send-status {
+      margin-top: 20px;
+      text-align: center;
+      min-height: 44px;
+    }
+
+    .send-status .status-text {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--muted);
+      transition: color 0.3s;
+    }
+
+    .send-status .status-text.success { color: var(--green); }
+    .send-status .status-text.error { color: var(--red); }
+    .send-status .status-text.sending { color: var(--orange); }
+
+    .send-status .coords-line {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .send-status .coords-line.visible { opacity: 1; }
+
+    /* --- CARDS GRID --- */
+    .cards-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .card .card-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .card .card-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 1px;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .card .card-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* --- GPX SECTION --- */
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      padding: 0 2px;
+    }
+
+    .gpx-drop {
+      border: 1.5px dashed rgba(255,255,255,0.15);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: transparent;
+    }
+
+    .gpx-drop:hover, .gpx-drop.over {
+      border-color: var(--orange);
+      background: var(--orange-glow);
+    }
+
+    .gpx-drop svg { width: 28px; height: 28px; margin-bottom: 10px; color: var(--muted); }
+    .gpx-drop .drop-text { font-size: 14px; color: var(--muted); }
+    .gpx-drop .drop-sub { font-size: 12px; color: rgba(136,133,128,0.6); margin-top: 4px; }
+
+    .gpx-drop.loaded {
+      border-style: solid;
+      border-color: rgba(61,186,106,0.4);
+      background: rgba(61,186,106,0.06);
+    }
+
+    .gpx-drop.loaded svg { color: var(--green); }
+    .gpx-drop.loaded .drop-text { color: var(--green); }
+
+    input[type="file"] { display: none; }
+
+    /* --- END SESSION --- */
+    .end-btn {
+      width: 100%;
+      padding: 16px;
+      border: 1px solid rgba(226,75,74,0.3);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--red);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .end-btn:active { background: rgba(226,75,74,0.1); }
+
+    /* --- ANIMATIONS --- */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .spinner {
+      display: none;
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 6px;
+    }
+
+    .spinner.visible { display: block; }
+
+    /* --- PULSE RING on send btn when sending --- */
+    @keyframes ring-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(232,80,10,0.4); }
+      70% { box-shadow: 0 0 0 18px rgba(232,80,10,0); }
+      100% { box-shadow: 0 0 0 0 rgba(232,80,10,0); }
+    }
+
+    .send-btn.sending { animation: ring-pulse 1.2s ease-out infinite; }
+
+    /* --- HISTORY --- */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .history-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--orange);
+      flex-shrink: 0;
+    }
+
+    .history-time {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .history-coords {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .spacer { flex: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">Trial Tracker</span>
+    <div class="session-badge">
+      <div class="session-dot" id="sessionDot"></div>
+      <span id="sessionLabel">Hors session</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- GPX Upload -->
+    <div>
+      <p class="section-label">Tracé GPX</p>
+      <label class="gpx-drop" id="gpxDrop" for="gpxFile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4M7 9l5-5 5 5M12 4v11"/>
+        </svg>
+        <div class="drop-text" id="gpxDropText">Charger mon parcours .gpx</div>
+        <div class="drop-sub" id="gpxDropSub">Appuie pour sélectionner le fichier</div>
+      </label>
+      <input type="file" id="gpxFile" accept=".gpx" onchange="uploadGPX(this)">
+    </div>
+
+    <!-- Big send button -->
+    <div class="send-zone" id="sendZone">
+      <button class="send-btn" id="sendBtn" onclick="sendPosition()">
+        <div class="btn-content">
+          <svg id="sendIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+          </svg>
+          <span class="btn-label">Envoyer</span>
+        </div>
+      </button>
+
+      <div class="send-status">
+        <div class="spinner" id="spinner"></div>
+        <div class="status-text" id="statusText">Appuie pour partager ta position</div>
+        <div class="coords-line" id="coordsLine">—</div>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="cards-row">
+      <div class="card">
+        <div class="card-label">Envois</div>
+        <div class="card-value" id="sendCount">0</div>
+        <div class="card-sub">cette session</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Dernier envoi</div>
+        <div class="card-value" id="lastSendTime">—</div>
+        <div class="card-sub" id="lastAccuracy">précision —</div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div id="historySection" style="display:none;">
+      <p class="section-label">Historique</p>
+      <div class="history-list" id="historyList"></div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <!-- End session -->
+    <button class="end-btn" onclick="endSession()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+      </svg>
+      Terminer la session
+    </button>
+  </main>
+
+  <script>
+    const API_URL = window.location.origin;
+
+    let sendCount = 0;
+    let sessionActive = false;
+    const history = [];
+
+    // Init - check session state
+    fetch(`${API_URL}/api/position`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.sessionActive) setSessionActive(true);
+      }).catch(() => {});
+
+    function setSessionActive(val) {
+      sessionActive = val;
+      const dot = document.getElementById('sessionDot');
+      const label = document.getElementById('sessionLabel');
+      if (val) {
+        dot.classList.add('active');
+        label.textContent = 'Session active';
+      } else {
+        dot.classList.remove('active');
+        label.textContent = 'Hors session';
+      }
+    }
+
+    async function sendPosition() {
+      const btn = document.getElementById('sendBtn');
+      const zone = document.getElementById('sendZone');
+      const statusText = document.getElementById('statusText');
+      const coordsLine = document.getElementById('coordsLine');
+      const spinner = document.getElementById('spinner');
+
+      if (btn.classList.contains('sending')) return;
+
+      btn.classList.add('sending');
+      zone.classList.add('sending');
+      spinner.classList.add('visible');
+      statusText.textContent = 'Localisation en cours…';
+      statusText.className = 'status-text sending';
+      coordsLine.classList.remove('visible');
+
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 12000,
+            maximumAge: 0
+          });
+        });
+
+        statusText.textContent = 'Envoi au serveur…';
+
+        const { latitude, longitude, accuracy } = position.coords;
+
+        await fetch(`${API_URL}/api/position`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lat: latitude,
+            lng: longitude,
+            accuracy,
+            timestamp: Date.now()
+          })
+        });
+
+        setSessionActive(true);
+
+        // Update UI
+        sendCount++;
+        document.getElementById('sendCount').textContent = sendCount;
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('lastSendTime').textContent = timeStr;
+        document.getElementById('lastAccuracy').textContent = `précision ±${Math.round(accuracy)}m`;
+
+        statusText.textContent = 'Position envoyée !';
+        statusText.className = 'status-text success';
+        coordsLine.textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        coordsLine.classList.add('visible');
+
+        // History
+        addHistory(timeStr, latitude, longitude, accuracy);
+
+        setTimeout(() => {
+          statusText.textContent = 'Appuie pour partager ta position';
+          statusText.className = 'status-text';
+        }, 3000);
+
+      } catch (err) {
+        statusText.textContent = err.code === 1
+          ? 'Géolocalisation refusée'
+          : err.code === 3
+            ? 'Temps dépassé — réessaie'
+            : 'Erreur : ' + (err.message || 'inconnue');
+        statusText.className = 'status-text error';
+        setTimeout(() => {
+          statusText.textContent = 'Appuie pour partager ta position';
+          statusText.className = 'status-text';
+        }, 4000);
+      } finally {
+        btn.classList.remove('sending');
+        zone.classList.remove('sending');
+        spinner.classList.remove('visible');
+      }
+    }
+
+    function addHistory(time, lat, lng, acc) {
+      history.unshift({ time, lat, lng, acc });
+      if (history.length > 5) history.pop();
+
+      const section = document.getElementById('historySection');
+      const list = document.getElementById('historyList');
+      section.style.display = 'block';
+      list.innerHTML = history.map(h => `
+        <div class="history-item">
+          <div class="history-dot"></div>
+          <span class="history-time">${h.time}</span>
+          <span class="history-coords">${h.lat.toFixed(5)}, ${h.lng.toFixed(5)}</span>
+        </div>
+      `).join('');
+    }
+
+    async function uploadGPX(input) {
+      if (!input.files[0]) return;
+
+      const drop = document.getElementById('gpxDrop');
+      const dropText = document.getElementById('gpxDropText');
+      const dropSub = document.getElementById('gpxDropSub');
+
+      dropText.textContent = 'Envoi en cours…';
+
+      try {
+        const formData = new FormData();
+        formData.append('gpx', input.files[0]);
+        const res = await fetch(`${API_URL}/api/gpx`, { method: 'POST', body: formData });
+
+        if (!res.ok) throw new Error();
+
+        drop.classList.add('loaded');
+        dropText.textContent = input.files[0].name;
+        dropSub.textContent = 'Tracé chargé — ta famille peut le voir';
+        setSessionActive(true);
+
+      } catch (e) {
+        dropText.textContent = 'Erreur — réessaie';
+        dropSub.textContent = input.files[0]?.name || '';
+        setTimeout(() => {
+          dropText.textContent = 'Charger mon parcours .gpx';
+          dropSub.textContent = 'Appuie pour sélectionner le fichier';
+        }, 3000);
+      }
+    }
+
+    async function endSession() {
+      if (!confirm('Terminer la session de suivi ?')) return;
+      try {
+        await fetch(`${API_URL}/api/session/end`, { method: 'POST' });
+        setSessionActive(false);
+        sendCount = 0;
+        document.getElementById('sendCount').textContent = '0';
+        document.getElementById('lastSendTime').textContent = '—';
+        document.getElementById('lastAccuracy').textContent = 'précision —';
+        document.getElementById('historySection').style.display = 'none';
+
+        const drop = document.getElementById('gpxDrop');
+        drop.classList.remove('loaded');
+        document.getElementById('gpxDropText').textContent = 'Charger mon parcours .gpx';
+        document.getElementById('gpxDropSub').textContent = 'Appuie pour sélectionner le fichier';
+
+        document.getElementById('statusText').textContent = 'Appuie pour partager ta position';
+        document.getElementById('coordsLine').classList.remove('visible');
+      } catch (e) {
+        alert('Erreur lors de la fin de session');
+      }
+    }
+  </script>
+</body>
+</html>

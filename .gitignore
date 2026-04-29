@@ -1,0 +1,6 @@
+node_modules/
+uploads/
+data/
+Savegardes/
+*.rtf
+.DS_Store
