@@ -256,16 +256,10 @@ app.get('/api/strava/activity/:id/gpx', async (req, res) => {
 //  ROUTES KOMOOT
 // ═══════════════════════════════
 
-// Extrait le GPX d'un lien Komoot public (tour ou activité)
 app.post('/api/komoot/import', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL manquante' });
 
-  // Extraire l'ID du tour depuis l'URL
-  // Formats supportés :
-  // komoot.com/tour/123456
-  // komoot.com/smarttour/e934230183/...
-  // komoot.com/*/tour/123456
   const match = url.match(/(?:smarttour|tour)\/([a-zA-Z0-9]+)/);
   if (!match) {
     return res.status(400).json({ error: 'URL Komoot invalide — colle un lien komoot.com/tour/... ou komoot.com/smarttour/...' });
@@ -273,57 +267,135 @@ app.post('/api/komoot/import', async (req, res) => {
   const tourId = match[1];
 
   try {
-    // Récupère les infos du tour via l'API publique Komoot
-    const tourData = await httpsGet(
-      `https://www.komoot.com/api/v007/tours/${tourId}?_embedded=coordinates,way_types,surfaces,directions,participants,timeline`,
-      {
-        'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; TrialTracker/1.0)'
+    // Komoot expose les données de la page en JSON dans un tag <script>
+    // On fetch la page HTML et on extrait le JSON embarqué
+    const pageHtml = await new Promise((resolve, reject) => {
+      const urlObj = new URL(`https://www.komoot.com/smarttour/${tourId}`);
+      const options = {
+        hostname: urlObj.hostname,
+        path: urlObj.pathname,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'fr-FR,fr;q=0.9',
+        }
+      };
+      const request = https.request(options, (response) => {
+        // Gère les redirections
+        if (response.statusCode === 301 || response.statusCode === 302) {
+          const redirectUrl = response.headers.location;
+          const redirObj = new URL(redirectUrl.startsWith('http') ? redirectUrl : `https://www.komoot.com${redirectUrl}`);
+          const redirOptions = { ...options, hostname: redirObj.hostname, path: redirObj.pathname + redirObj.search };
+          https.request(redirOptions, (r2) => {
+            let d = '';
+            r2.on('data', c => d += c);
+            r2.on('end', () => resolve(d));
+          }).on('error', reject).end();
+          return;
+        }
+        let data = '';
+        response.on('data', chunk => data += chunk);
+        response.on('end', () => resolve(data));
+      });
+      request.on('error', reject);
+      request.end();
+    });
+
+    // Cherche le JSON embarqué dans la page
+    // Komoot injecte les données du tour dans window.__komoot_store__ ou similaire
+    let tourData = null;
+
+    // Méthode 1 : cherche les coordonnées dans les données JSON de la page
+    const jsonMatch = pageHtml.match(/kmtBoot\.init\(({.+})\)/s) ||
+                      pageHtml.match(/"coordinates"\s*:\s*\{"items"\s*:\s*(\[.+?\])/s) ||
+                      pageHtml.match(/window\.__INITIAL_STATE__\s*=\s*({.+?})\s*;<\/script>/s);
+
+    // Méthode 2 : extraction directe des coordonnées via regex
+    const coordsMatch = pageHtml.match(/"latlng"\s*:\s*\[([^\]]+)\]/g) ||
+                        pageHtml.match(/{"lat"\s*:\s*([\d.]+)\s*,\s*"lng"\s*:\s*([\d.]+)/g);
+
+    // Méthode 3 : cherche le bloc de données de la carte
+    const tileDataMatch = pageHtml.match(/"path"\s*:\s*"([A-Za-z0-9+/=_-]+)"/);
+
+    // Extraction du nom du tour depuis la page HTML
+    const nameMatch = pageHtml.match(/<title[^>]*>([^<]+)<\/title>/) ||
+                      pageHtml.match(/"name"\s*:\s*"([^"]+)"/);
+    const tourName = nameMatch ? nameMatch[1].replace(' | komoot', '').trim() : 'Tour Komoot';
+
+    // Extraction des points GPS depuis les données JSON embarquées
+    const pointsData = [];
+
+    // Cherche le pattern des coordonnées Komoot dans le HTML
+    const latLngPattern = /"lat"\s*:\s*([\d.-]+)\s*,\s*"lng"\s*:\s*([\d.-]+)(?:\s*,\s*"alt"\s*:\s*([\d.-]+))?/g;
+    let ptMatch;
+    while ((ptMatch = latLngPattern.exec(pageHtml)) !== null) {
+      pointsData.push({
+        lat: parseFloat(ptMatch[1]),
+        lng: parseFloat(ptMatch[2]),
+        alt: ptMatch[3] ? parseFloat(ptMatch[3]) : null
+      });
+    }
+
+    if (pointsData.length < 2) {
+      // Fallback : essaie l'API avec un User-Agent différent
+      const apiData = await httpsGet(
+        `https://www.komoot.com/api/v007/tours/${tourId}?_embedded=coordinates`,
+        {
+          'User-Agent': 'Komoot/12.0 (iPhone; iOS 16.0)',
+          'Accept': 'application/json',
+          'Referer': 'https://www.komoot.com/'
+        }
+      );
+
+      if (apiData && apiData._embedded && apiData._embedded.coordinates) {
+        const items = apiData._embedded.coordinates.items;
+        items.forEach(pt => pointsData.push({ lat: pt.lat, lng: pt.lng, alt: pt.alt || null }));
+        tourData = apiData;
       }
+    }
+
+    if (pointsData.length < 2) {
+      return res.status(404).json({
+        error: 'Impossible d\'extraire le tracé. Ce tour est peut-être privé ou le format a changé. Utilise l\'option "Fichier GPX" à la place.'
+      });
+    }
+
+    // Dédupliquer les points consécutifs identiques
+    const uniquePoints = pointsData.filter((pt, i) =>
+      i === 0 || pt.lat !== pointsData[i-1].lat || pt.lng !== pointsData[i-1].lng
     );
 
-    if (tourData.error || !tourData.id) {
-      return res.status(404).json({ error: 'Tour introuvable ou privé. Vérifie que l\'activité est publique.' });
-    }
-
-    // Récupère les coordonnées GPS
-    const coords = tourData._embedded?.coordinates?.items;
-    if (!coords || coords.length === 0) {
-      return res.status(404).json({ error: 'Pas de données GPS pour ce tour.' });
-    }
-
     // Infos du tour
-    const name     = tourData.name || 'Tour Komoot';
-    const distance = tourData.distance ? (tourData.distance / 1000).toFixed(1) : null;
-    const elevation= tourData.elevation_up ? Math.round(tourData.elevation_up) : null;
-    const date     = tourData.date ? tourData.date.split('T')[0] : new Date().toISOString().split('T')[0];
-    const type     = tourData.type === 'tour_recorded' ? 'trail' : 'planned';
+    const distMatch = pageHtml.match(/"distance"\s*:\s*([\d.]+)/);
+    const elevMatch = pageHtml.match(/"elevation_up"\s*:\s*([\d.]+)/);
+    const dateMatch = pageHtml.match(/"date"\s*:\s*"([^"]+)"/);
+
+    const distance = distMatch ? (parseFloat(distMatch[1]) / 1000).toFixed(1) : null;
+    const elevation = elevMatch ? Math.round(parseFloat(elevMatch[1])) : null;
+    const date = dateMatch ? dateMatch[1].split('T')[0] : new Date().toISOString().split('T')[0];
 
     // Construit le GPX
     let gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="Trial Tracker" xmlns="http://www.topografix.com/GPX/1/1">
-  <metadata>
-    <name>${name.replace(/[<>&"]/g, '')}</name>
-    <time>${tourData.date || new Date().toISOString()}</time>
-  </metadata>
+  <metadata><name>${tourName.replace(/[<>&"]/g, '')}</name></metadata>
   <trk>
-    <name>${name.replace(/[<>&"]/g, '')}</name>
+    <name>${tourName.replace(/[<>&"]/g, '')}</name>
     <trkseg>\n`;
 
-    coords.forEach(pt => {
+    uniquePoints.forEach(pt => {
       const ele = pt.alt != null ? `\n        <ele>${pt.alt.toFixed(1)}</ele>` : '';
       gpx += `      <trkpt lat="${pt.lat}" lon="${pt.lng}">${ele}\n      </trkpt>\n`;
     });
 
-    gpx += `    </trkseg>
-  </trk>
-</gpx>`;
+    gpx += `    </trkseg>\n  </trk>\n</gpx>`;
 
-    res.json({ gpx, name, date, type, distance, elevation, tourId });
+    console.log(`Komoot import: ${uniquePoints.length} points, "${tourName}"`);
+
+    res.json({ gpx, name: tourName, date, type: 'trail', distance, elevation });
 
   } catch (e) {
     console.error('Komoot import error:', e);
-    res.status(500).json({ error: 'Erreur lors de la récupération du tour : ' + e.message });
+    res.status(500).json({ error: 'Erreur lors de la récupération : ' + e.message });
   }
 });
 
