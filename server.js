@@ -253,6 +253,78 @@ app.get('/api/strava/activity/:id/gpx', async (req, res) => {
 });
 
 // ═══════════════════════════════
+//  ROUTES KOMOOT
+// ═══════════════════════════════
+
+// Extrait le GPX d'un lien Komoot public (tour ou activité)
+app.post('/api/komoot/import', async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL manquante' });
+
+  // Extraire l'ID du tour depuis l'URL
+  // Formats: komoot.com/tour/123456 ou komoot.com/*/tour/123456
+  const match = url.match(/tour\/(\d+)/);
+  if (!match) {
+    return res.status(400).json({ error: 'URL Komoot invalide — colle un lien de type komoot.com/tour/XXXXXXX' });
+  }
+  const tourId = match[1];
+
+  try {
+    // Récupère les infos du tour via l'API publique Komoot
+    const tourData = await httpsGet(
+      `https://www.komoot.com/api/v007/tours/${tourId}?_embedded=coordinates,way_types,surfaces,directions,participants,timeline`,
+      {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (compatible; TrialTracker/1.0)'
+      }
+    );
+
+    if (tourData.error || !tourData.id) {
+      return res.status(404).json({ error: 'Tour introuvable ou privé. Vérifie que l\'activité est publique.' });
+    }
+
+    // Récupère les coordonnées GPS
+    const coords = tourData._embedded?.coordinates?.items;
+    if (!coords || coords.length === 0) {
+      return res.status(404).json({ error: 'Pas de données GPS pour ce tour.' });
+    }
+
+    // Infos du tour
+    const name     = tourData.name || 'Tour Komoot';
+    const distance = tourData.distance ? (tourData.distance / 1000).toFixed(1) : null;
+    const elevation= tourData.elevation_up ? Math.round(tourData.elevation_up) : null;
+    const date     = tourData.date ? tourData.date.split('T')[0] : new Date().toISOString().split('T')[0];
+    const type     = tourData.type === 'tour_recorded' ? 'trail' : 'planned';
+
+    // Construit le GPX
+    let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Trial Tracker" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>${name.replace(/[<>&"]/g, '')}</name>
+    <time>${tourData.date || new Date().toISOString()}</time>
+  </metadata>
+  <trk>
+    <name>${name.replace(/[<>&"]/g, '')}</name>
+    <trkseg>\n`;
+
+    coords.forEach(pt => {
+      const ele = pt.alt != null ? `\n        <ele>${pt.alt.toFixed(1)}</ele>` : '';
+      gpx += `      <trkpt lat="${pt.lat}" lon="${pt.lng}">${ele}\n      </trkpt>\n`;
+    });
+
+    gpx += `    </trkseg>
+  </trk>
+</gpx>`;
+
+    res.json({ gpx, name, date, type, distance, elevation, tourId });
+
+  } catch (e) {
+    console.error('Komoot import error:', e);
+    res.status(500).json({ error: 'Erreur lors de la récupération du tour : ' + e.message });
+  }
+});
+
+// ═══════════════════════════════
 //  ROUTES SESSION ACTIVE
 // ═══════════════════════════════
 

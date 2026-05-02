@@ -88,22 +88,108 @@
     .import-tab { flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; -webkit-appearance: none; }
     .import-tab.active { border-color: var(--orange); color: var(--orange); background: var(--orange-glow); }
     .import-tab.strava-tab.active { border-color: var(--strava); color: var(--strava); background: rgba(252,76,2,0.1); }
+    .import-tab.komoot-tab.active { border-color: #6AA84F; color: #6AA84F; background: rgba(106,168,79,0.1); }
     .import-panel { display: none; }
     .import-panel.active { display: block; }
 
+    /* Komoot */
+    .komoot-wrap { display: flex; flex-direction: column; gap: 10px; }
+    .komoot-hint { font-size: 12px; color: var(--muted); line-height: 1.6; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+    .komoot-input-row { display: flex; gap: 8px; }
+    .komoot-input-row .text-input { flex: 1; }
+    .komoot-btn {
+      width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+      border: none; background: #6AA84F; color: white;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      -webkit-appearance: none; transition: opacity 0.2s;
+    }
+    .komoot-btn:active { opacity: 0.8; }
+    .komoot-btn:disabled { opacity: 0.4; pointer-events: none; }
+    .komoot-status { font-size: 12px; min-height: 18px; transition: color 0.2s; }
+    .komoot-status.error   { color: var(--red); }
+    .komoot-status.success { color: #6AA84F; }
+    .komoot-status.loading { color: var(--muted); }
+
     /* GPX drop */
-    .gpx-drop { border: 1.5px dashed rgba(255,255,255,0.12); border-radius: var(--radius); padding: 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+    .gpx-drop {
+      display: flex; flex-direction: row; align-items: center; gap: 12px;
+      width: 100%;
+      border: 1.5px dashed rgba(255,255,255,0.12); border-radius: var(--radius);
+      padding: 16px 18px; text-align: left; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
     .gpx-drop:hover { border-color: var(--orange); background: var(--orange-glow); }
     .gpx-drop.loaded { border-style: solid; border-color: rgba(61,186,106,0.4); background: rgba(61,186,106,0.06); }
-    .gpx-drop svg { margin-bottom: 8px; }
-    .gpx-drop .drop-text { font-size: 13px; color: var(--muted); }
-    .gpx-drop .drop-sub { font-size: 11px; color: rgba(136,133,128,0.6); margin-top: 4px; }
+    .gpx-drop svg { flex-shrink: 0; }
+    .gpx-drop-text-wrap { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+    .gpx-drop .drop-text { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gpx-drop .drop-sub { font-size: 11px; color: rgba(136,133,128,0.6); }
     .gpx-drop.loaded .drop-text { color: var(--green); }
     input[type="file"] { display: none; }
     .session-name-row { display: flex; gap: 8px; margin-top: 8px; }
     .text-input { flex: 1; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color 0.2s; }
     .text-input:focus { border-color: rgba(232,80,10,0.5); }
     .text-input::placeholder { color: var(--muted); }
+
+    /* ══ SAVE ROUTE BUTTON ══ */
+    .save-route-btn {
+      width: 100%; padding: 13px; border-radius: var(--radius);
+      border: 1px solid rgba(61,186,106,0.35);
+      background: rgba(61,186,106,0.08);
+      color: var(--green); font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      display: none; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s; -webkit-appearance: none;
+    }
+    .save-route-btn.visible { display: flex; }
+    .save-route-btn:active { background: rgba(61,186,106,0.16); }
+    .save-route-btn.saved { border-color: rgba(61,186,106,0.6); color: var(--green); opacity: 0.6; pointer-events: none; }
+
+    /* ══ FAB + BUTTON ══ */
+    .fab-new {
+      position: fixed; bottom: 24px; right: 20px; z-index: 500;
+      width: 54px; height: 54px; border-radius: 50%;
+      background: var(--red); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(226,75,74,0.45);
+      transition: transform 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none;
+    }
+    .fab-new:active { transform: scale(0.92); box-shadow: 0 2px 8px rgba(226,75,74,0.3); }
+    .fab-new svg { color: white; }
+
+    /* ══ CONFIRM DIALOG ══ */
+    .dialog-overlay {
+      position: fixed; inset: 0; z-index: 600;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+      display: none; align-items: flex-end; justify-content: center;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .dialog-overlay.visible { display: flex; }
+    .dialog-sheet {
+      background: var(--surface); border-radius: 20px 20px 0 0;
+      border: 1px solid var(--border); border-bottom: none;
+      padding: 24px 20px 32px; width: 100%; max-width: 480px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .dialog-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1.5px; color: var(--text); margin-bottom: 4px; }
+    .dialog-sub { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 4px; }
+    .dialog-current { font-size: 13px; font-weight: 600; color: var(--orange); padding: 10px 14px; background: var(--orange-glow); border-radius: 10px; border: 1px solid rgba(232,80,10,0.2); }
+    .dialog-btn { width: 100%; padding: 14px; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; border: none; -webkit-appearance: none; transition: opacity 0.2s; }
+    .dialog-btn-save { background: var(--green); color: white; }
+    .dialog-btn-discard { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+    .dialog-btn:active { opacity: 0.8; }
+
+    /* Drawer parcours cards */
+    .route-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; position: relative; cursor: pointer; transition: border-color 0.2s; }
+    .route-card:active { border-color: var(--orange); }
+    .rc-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; }
+    .rc-name { font-weight: 600; font-size: 14px; padding-right: 32px; }
+    .rc-stats { display: flex; gap: 14px; align-items: center; }
+    .rc-stat { display: flex; align-items: center; gap: 4px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
+    .rc-stat strong { font-family: 'Bebas Neue', sans-serif; font-size: 17px; color: var(--text); letter-spacing: 0.5px; }
+    .rc-delete { position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; -webkit-appearance: none; }
+    .rc-date { font-size: 11px; color: rgba(136,133,128,0.6); margin-top: 6px; }
 
     /* ══ STRAVA PANEL ══ */
     .strava-connect-block { display: flex; flex-direction: column; gap: 10px; }
@@ -225,6 +311,32 @@
     <div class="fetching-text" id="fetchingText">Récupération du parcours Strava…</div>
   </div>
 
+  <!-- DIALOG confirmation nouveau projet -->
+  <div class="dialog-overlay" id="dialogOverlay">
+    <div class="dialog-sheet">
+      <div class="dialog-title">Nouveau parcours</div>
+      <div class="dialog-sub">Tu consultes déjà un parcours :</div>
+      <div class="dialog-current" id="dialogCurrentName">—</div>
+      <div class="dialog-sub" style="margin-top:4px;">Veux-tu le sauvegarder avant de continuer ?</div>
+      <button class="dialog-btn dialog-btn-save" onclick="dialogSaveAndNew()">
+        Sauvegarder et créer un nouveau
+      </button>
+      <button class="dialog-btn dialog-btn-discard" onclick="dialogDiscardAndNew()">
+        Ignorer et créer un nouveau
+      </button>
+      <button class="dialog-btn dialog-btn-discard" onclick="closeDialog()" style="margin-top:-4px;">
+        Annuler
+      </button>
+    </div>
+  </div>
+
+  <!-- FAB nouveau projet -->
+  <button class="fab-new" id="fabNew" onclick="newProject()">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+  </button>
+
   <!-- DRAWER -->
   <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
   <div class="drawer" id="drawer">
@@ -264,34 +376,63 @@
       <p class="section-label">Charger un parcours</p>
       <div class="import-tabs">
         <button class="import-tab active" id="tabGpx" onclick="switchTab('gpx')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-          Fichier GPX
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+          GPX
         </button>
         <button class="import-tab strava-tab" id="tabStrava" onclick="switchTab('strava')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           Strava
+        </button>
+        <button class="import-tab komoot-tab" id="tabKomoot" onclick="switchTab('komoot')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          Komoot
         </button>
       </div>
 
       <!-- GPX Panel -->
       <div class="import-panel active" id="panelGpx">
         <label class="gpx-drop" id="gpxDrop" for="gpxFile">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" color="var(--muted)">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
           </svg>
-          <div class="drop-text" id="gpxDropText">Sélectionner un fichier .gpx</div>
-          <div class="drop-sub" id="gpxDropSub">Komoot, Wikiloc, Garmin, AllTrails…</div>
+          <div class="gpx-drop-text-wrap">
+            <div class="drop-text" id="gpxDropText">Sélectionner un fichier .gpx</div>
+            <div class="drop-sub" id="gpxDropSub">Komoot, Wikiloc, Garmin, AllTrails…</div>
+          </div>
         </label>
         <input type="file" id="gpxFile" accept=".gpx" onchange="uploadGPX(this)">
         <div class="session-name-row">
           <input type="text" class="text-input" id="sessionName" placeholder="Nom de la sortie…">
         </div>
+        <button class="save-route-btn" id="saveRouteBtn" onclick="saveRoute()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+          </svg>
+          Sauvegarder ce parcours
+        </button>
       </div>
 
       <!-- Strava Panel -->
       <div class="import-panel" id="panelStrava">
-        <div class="strava-connect-block" id="stravaBlock">
-          <!-- Rempli dynamiquement -->
+        <div class="strava-connect-block" id="stravaBlock"></div>
+      </div>
+
+      <!-- Komoot Panel -->
+      <div class="import-panel" id="panelKomoot">
+        <div class="komoot-wrap">
+          <div class="komoot-hint">
+            Colle le lien d'un tour Komoot public.<br>
+            <span style="color:rgba(136,133,128,0.7)">Ex : komoot.com/tour/123456789</span>
+          </div>
+          <div class="komoot-input-row">
+            <input type="url" class="text-input" id="komootUrl" placeholder="https://www.komoot.com/tour/…" autocomplete="off" autocorrect="off" spellcheck="false">
+            <button class="komoot-btn" id="komootImportBtn" onclick="importKomoot()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+              </svg>
+            </button>
+          </div>
+          <div class="komoot-status" id="komootStatus"></div>
         </div>
       </div>
     </div>
@@ -559,11 +700,74 @@
 
   // ── TABS ──
   function switchTab(tab) {
-    document.getElementById('tabGpx').classList.toggle('active', tab === 'gpx');
-    document.getElementById('tabStrava').classList.toggle('active', tab === 'strava');
-    document.getElementById('panelGpx').classList.toggle('active', tab === 'gpx');
-    document.getElementById('panelStrava').classList.toggle('active', tab === 'strava');
+    ['gpx','strava','komoot'].forEach(t => {
+      document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1))?.classList.toggle('active', tab === t);
+      document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1))?.classList.toggle('active', tab === t);
+    });
     if (tab === 'strava') checkStravaStatus();
+  }
+
+  // ── KOMOOT IMPORT ──
+  async function importKomoot() {
+    const input  = document.getElementById('komootUrl');
+    const btn    = document.getElementById('komootImportBtn');
+    const status = document.getElementById('komootStatus');
+    const url    = input.value.trim();
+
+    if (!url) { status.textContent = 'Colle un lien Komoot d\'abord.'; status.className = 'komoot-status error'; return; }
+    if (!url.includes('komoot.com')) { status.textContent = 'Ce lien ne ressemble pas à un lien Komoot.'; status.className = 'komoot-status error'; return; }
+
+    btn.disabled = true;
+    status.textContent = 'Récupération du tour…';
+    status.className = 'komoot-status loading';
+    document.getElementById('fetchingText').textContent = 'Récupération du tour Komoot…';
+    document.getElementById('fetchingOverlay').classList.add('visible');
+
+    try {
+      const res  = await fetch(`${API_URL}/api/komoot/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.gpx) throw new Error(data.error || 'Erreur inconnue');
+
+      // Charge le GPX
+      const blob = new Blob([data.gpx], { type: 'application/gpx+xml' });
+      const form = new FormData();
+      form.append('gpx',  new File([blob], 'komoot.gpx'));
+      form.append('name', data.name || 'Tour Komoot');
+      form.append('type', data.type || 'trail');
+      form.append('date', data.date || new Date().toISOString().split('T')[0]);
+      await fetch(`${API_URL}/api/gpx`, { method: 'POST', body: form });
+
+      gpxPoints = parseGPX(data.gpx);
+      showMapSection(); drawMiniElev(); drawGPXOnMap(gpxPoints);
+      setSessionActive(true);
+
+      // Update GPX drop display
+      document.getElementById('gpxDropText').textContent = data.name || 'Tour Komoot';
+      const sub = [data.distance ? data.distance + ' km' : null, data.elevation ? 'D+ ' + data.elevation + 'm' : null].filter(Boolean).join(' · ');
+      document.getElementById('gpxDropSub').textContent = sub || 'Importé depuis Komoot';
+      document.getElementById('gpxDrop').classList.add('loaded');
+      document.getElementById('sessionName').value = data.name || 'Tour Komoot';
+      document.getElementById('saveRouteBtn').classList.add('visible');
+
+      status.textContent = '✓ Tour importé avec succès !';
+      status.className = 'komoot-status success';
+      input.value = '';
+
+      // Bascule vers l'onglet GPX pour voir le résultat
+      switchTab('gpx');
+
+    } catch(e) {
+      status.textContent = e.message || 'Erreur lors de l\'import';
+      status.className = 'komoot-status error';
+    } finally {
+      btn.disabled = false;
+      document.getElementById('fetchingOverlay').classList.remove('visible');
+    }
   }
 
   // ── DRAWER ──
