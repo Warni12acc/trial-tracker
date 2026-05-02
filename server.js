@@ -262,10 +262,13 @@ app.post('/api/komoot/import', async (req, res) => {
   if (!url) return res.status(400).json({ error: 'URL manquante' });
 
   // Extraire l'ID du tour depuis l'URL
-  // Formats: komoot.com/tour/123456 ou komoot.com/*/tour/123456
-  const match = url.match(/tour\/(\d+)/);
+  // Formats supportés :
+  // komoot.com/tour/123456
+  // komoot.com/smarttour/e934230183/...
+  // komoot.com/*/tour/123456
+  const match = url.match(/(?:smarttour|tour)\/([a-zA-Z0-9]+)/);
   if (!match) {
-    return res.status(400).json({ error: 'URL Komoot invalide — colle un lien de type komoot.com/tour/XXXXXXX' });
+    return res.status(400).json({ error: 'URL Komoot invalide — colle un lien komoot.com/tour/... ou komoot.com/smarttour/...' });
   }
   const tourId = match[1];
 
