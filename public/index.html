@@ -28,264 +28,142 @@
 
     body {
       font-family: 'DM Sans', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      height: 100dvh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+      background: var(--bg); color: var(--text);
+      height: 100vh; height: 100dvh;
+      overflow: hidden; display: flex; flex-direction: column;
     }
 
-    /* ── MAP ── */
-    #map-container {
-      flex: 1;
-      position: relative;
-      min-height: 0;
-    }
-
-    #map {
-      position: absolute;
-      inset: 0;
-    }
-
+    #map-container { flex: 1; position: relative; min-height: 0; }
+    #map { position: absolute; inset: 0; }
     .leaflet-tile-pane { filter: saturate(0.65) brightness(0.82); }
 
     /* ── TOP BAR ── */
     .top-bar {
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: space-between;
       padding: 14px 16px 10px;
       background: linear-gradient(to bottom, rgba(14,14,14,0.92) 0%, transparent 100%);
       pointer-events: none;
     }
-
-    .logo {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 20px;
-      letter-spacing: 2.5px;
-      color: var(--orange);
-    }
-
+    .logo { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2.5px; color: var(--orange); }
     .live-pill {
-      pointer-events: all;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 12px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 100px;
-      font-size: 12px;
-      font-weight: 500;
+      pointer-events: all; display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 100px; font-size: 12px; font-weight: 500;
       backdrop-filter: blur(12px);
     }
-
-    .live-dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--muted);
-      transition: background 0.4s;
-    }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.4s; }
     .live-dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green); }
     .live-dot.stale   { background: var(--amber); }
     .live-dot.offline { background: var(--red); }
 
+    /* ── OFF ROUTE WARNING ── */
+    .off-route-warn {
+      position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+      z-index: 1001; display: none; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 100px;
+      background: rgba(240,168,39,0.15); border: 1px solid rgba(240,168,39,0.4);
+      color: var(--amber); font-size: 12px; font-weight: 600;
+      backdrop-filter: blur(8px); white-space: nowrap;
+    }
+
     /* ── MAP BUTTONS ── */
     .map-actions {
-      position: absolute;
-      bottom: 16px; right: 14px;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      position: absolute; bottom: 16px; right: 14px;
+      z-index: 1000; display: flex; flex-direction: column; gap: 8px;
     }
-
     .map-btn {
-      width: 40px; height: 40px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(12px);
-      transition: background 0.2s;
-      -webkit-appearance: none;
+      width: 40px; height: 40px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(12px); transition: background 0.2s;
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
     }
     .map-btn:active { background: rgba(255,255,255,0.12); }
-
     @keyframes spin { to { transform: rotate(360deg); } }
     .map-btn.spinning svg { animation: spin 0.6s linear infinite; }
 
     /* ── ELEVATION PANEL ── */
     #elev-panel {
-      flex-shrink: 0;
-      background: var(--surface2);
+      flex-shrink: 0; background: var(--surface2);
       border-top: 1px solid var(--border);
-      display: none;
-      flex-direction: column;
+      display: none; flex-direction: column;
     }
 
     .stats-strip {
-      display: flex;
-      align-items: stretch;
+      display: flex; align-items: stretch;
       border-bottom: 1px solid var(--border);
-      overflow-x: auto;
-      scrollbar-width: none;
+      overflow-x: auto; scrollbar-width: none;
     }
     .stats-strip::-webkit-scrollbar { display: none; }
 
     .stat-item {
-      flex: 1;
-      min-width: 65px;
-      padding: 10px 8px 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
+      flex: 1; min-width: 65px; padding: 10px 8px 8px;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
       border-right: 1px solid var(--border);
     }
     .stat-item:last-child { border-right: none; }
-
-    .stat-label {
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--muted);
-    }
-    .stat-val {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 18px;
-      line-height: 1;
-    }
+    .stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+    .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 18px; line-height: 1; }
     .stat-unit { font-size: 9px; color: var(--muted); }
-
     .stat-val.orange { color: var(--orange); }
     .stat-val.green  { color: var(--green); }
     .stat-val.red    { color: var(--red); }
     .stat-val.blue   { color: var(--blue); }
+    .stat-val.amber  { color: var(--amber); }
 
     /* Progress */
     .progress-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 7px 14px 6px;
-      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 14px 6px; border-bottom: 1px solid var(--border);
     }
-
-    .progress-track {
-      flex: 1;
-      height: 4px;
-      background: rgba(255,255,255,0.08);
-      border-radius: 2px;
-      position: relative;
-    }
-
+    .progress-track { flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; position: relative; }
     .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--orange-dark), var(--orange));
-      border-radius: 2px;
-      transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
-      width: 0%;
-      position: relative;
+      height: 100%; background: linear-gradient(90deg, var(--orange-dark), var(--orange));
+      border-radius: 2px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); width: 0%; position: relative;
     }
-
     .progress-fill::after {
-      content: '';
-      position: absolute;
-      right: -5px; top: 50%;
-      transform: translateY(-50%);
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      background: var(--orange);
-      box-shadow: 0 0 8px var(--orange);
+      content: ''; position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--orange); box-shadow: 0 0 8px var(--orange);
     }
+    .progress-pct { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--orange); letter-spacing: 1px; min-width: 38px; text-align: right; }
+    .progress-label { font-size: 10px; color: var(--muted); min-width: 90px; white-space: nowrap; }
 
-    .progress-pct {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 16px;
-      color: var(--orange);
-      letter-spacing: 1px;
-      min-width: 38px;
-      text-align: right;
+    /* ── RACE INFO STRIP (page famille) ── */
+    .race-strip {
+      display: none; align-items: stretch;
+      border-bottom: 1px solid var(--border);
+      background: rgba(232,80,10,0.05);
     }
-
-    .progress-label {
-      font-size: 10px;
-      color: var(--muted);
-      min-width: 90px;
-      white-space: nowrap;
-    }
-
-    /* Chart */
-    .elev-chart-wrap {
-      position: relative;
-      height: 120px;
-    }
-
-    #elevCanvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
+    .race-strip.visible { display: flex; }
+    .race-strip .stat-item { border-right: 1px solid var(--border); }
+    .race-strip .stat-item:last-child { border-right: none; }
+    #elevCanvas { width: 100%; height: 100%; display: block; }
     .elev-tooltip {
-      position: absolute;
-      top: 6px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 4px 9px;
-      font-size: 11px;
-      pointer-events: none;
-      display: none;
-      white-space: nowrap;
-      z-index: 10;
+      position: absolute; top: 6px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 4px 9px; font-size: 11px; pointer-events: none;
+      display: none; white-space: nowrap; z-index: 10;
     }
-    .elev-tooltip strong {
-      color: var(--orange);
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 15px;
-    }
+    .elev-tooltip strong { color: var(--orange); font-family: 'Bebas Neue', sans-serif; font-size: 15px; }
 
     /* ── NO SESSION ── */
     .no-session-overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 2000;
-      background: var(--bg);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 32px;
-      text-align: center;
-      transition: opacity 0.4s;
+      position: absolute; inset: 0; z-index: 2000;
+      background: var(--bg); display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 32px; text-align: center; transition: opacity 0.4s;
     }
     .no-session-overlay.hidden { opacity: 0; pointer-events: none; }
-
     .ns-logo { font-family:'Bebas Neue',sans-serif; font-size:42px; letter-spacing:4px; color:var(--orange); margin-bottom:8px; }
     .ns-sub  { font-size:15px; color:var(--muted); max-width:280px; line-height:1.6; }
-
-    .ns-anim {
-      width:80px; height:80px; border-radius:50%;
-      border:1.5px solid rgba(232,80,10,0.25);
-      display:flex; align-items:center; justify-content:center;
-      margin:32px auto; position:relative;
-    }
+    .ns-anim { width:80px; height:80px; border-radius:50%; border:1.5px solid rgba(232,80,10,0.25); display:flex; align-items:center; justify-content:center; margin:32px auto; position:relative; }
     .ns-anim::before { content:''; position:absolute; inset:-8px; border-radius:50%; border:1px solid rgba(232,80,10,0.15); }
     .ns-anim::after  { content:''; position:absolute; inset:-18px; border-radius:50%; border:1px solid rgba(232,80,10,0.08); }
     .ns-pulse { width:24px; height:24px; border-radius:50%; background:rgba(232,80,10,0.4); animation:ns-pulse 2s ease-in-out infinite; }
     @keyframes ns-pulse { 0%,100%{transform:scale(0.8);opacity:0.6;} 50%{transform:scale(1.2);opacity:1;} }
-
     .ns-dot-row { display:flex; gap:6px; justify-content:center; margin-top:12px; }
     .ns-dot { width:6px; height:6px; border-radius:50%; background:rgba(136,133,128,0.3); animation:ns-dot 1.5s ease-in-out infinite; }
     .ns-dot:nth-child(2){animation-delay:0.25s;} .ns-dot:nth-child(3){animation-delay:0.5s;}
@@ -299,9 +177,7 @@
     <p class="ns-sub">En attente que le pilote démarre une session et partage son GPX</p>
     <div class="ns-anim"><div class="ns-pulse"></div></div>
     <p style="font-size:13px;color:rgba(136,133,128,0.6);">Vérification toutes les 5 secondes</p>
-    <div class="ns-dot-row">
-      <div class="ns-dot"></div><div class="ns-dot"></div><div class="ns-dot"></div>
-    </div>
+    <div class="ns-dot-row"><div class="ns-dot"></div><div class="ns-dot"></div><div class="ns-dot"></div></div>
   </div>
 
   <div id="map-container">
@@ -314,6 +190,9 @@
         <span id="liveLabel">En attente</span>
       </div>
     </div>
+
+    <!-- Avertissement hors tracé -->
+    <div class="off-route-warn" id="offRouteWarn"></div>
 
     <div class="map-actions">
       <button class="map-btn" onclick="centerOnRider()" title="Centrer sur le pilote">
@@ -336,6 +215,30 @@
 
   <!-- ELEVATION PANEL -->
   <div id="elev-panel">
+
+    <!-- Bloc course (heure départ, chrono, vitesse, ETA) -->
+    <div class="race-strip" id="raceStrip">
+      <div class="stat-item">
+        <span class="stat-label">Départ</span>
+        <span class="stat-val green" id="fRaceStart">—</span>
+        <span class="stat-unit">heure</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Temps</span>
+        <span class="stat-val orange" id="fRaceElapsed">—</span>
+        <span class="stat-unit">écoulé</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Moy.</span>
+        <span class="stat-val blue" id="fRaceSpeed">—</span>
+        <span class="stat-unit">km/h</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Arrivée</span>
+        <span class="stat-val amber" id="fRaceEta">—</span>
+        <span class="stat-unit">estimée</span>
+      </div>
+    </div>
     <div class="stats-strip">
       <div class="stat-item">
         <span class="stat-label">Distance</span>
@@ -367,6 +270,11 @@
         <span class="stat-val" id="statAlt">—</span>
         <span class="stat-unit">m</span>
       </div>
+      <div class="stat-item">
+        <span class="stat-label">Écart</span>
+        <span class="stat-val amber" id="statEcart">—</span>
+        <span class="stat-unit">m du tracé</span>
+      </div>
     </div>
 
     <div class="progress-row">
@@ -395,26 +303,57 @@
   }).addTo(map);
   L.control.zoom({ position: 'topright' }).addTo(map);
 
-  let marker      = null;
-  let gpxLayer    = null;
-  let gpxPoints   = [];
-  let totalDist   = 0;
-  let totalUp     = 0;
-  let totalDown   = 0;
-  let lastPosition= null;
-  let positionCount = 0;
-  let gpxLoaded   = false;
-  let currentIdx  = null;
-  let breadcrumbs = []; // trail of past positions
+  let marker       = null;
+  let gpxLayer     = null;
+  let gpxPoints    = [];
+  let totalDist    = 0;
+  let totalUp      = 0;
+  let totalDown    = 0;
+  let lastPosition = null;
+  let positionCount= 0;
+  let gpxLoaded    = false;
+  let currentIdx   = null;
+  let breadcrumbs  = [];
 
+  // ── Race chrono (page famille) ──
+  let familyRaceStart   = null;
+  let familyChronoTimer = null;
+
+  function updateFamilyChrono() {
+    if (!familyRaceStart) return;
+    const elapsed = Date.now() - familyRaceStart;
+    const h = Math.floor(elapsed / 3600000);
+    const m = Math.floor((elapsed % 3600000) / 60000);
+    const s = Math.floor((elapsed % 60000) / 1000);
+    const str = h > 0
+      ? `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`
+      : `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    const el = document.getElementById('fRaceElapsed');
+    if (el) el.textContent = str;
+  }
+
+  function updateRaceStrip(raceInfo, position) {
+    const strip = document.getElementById('raceStrip');
+    if (!raceInfo?.startTime) { strip.classList.remove('visible'); return; }
+    strip.classList.add('visible');
+    if (familyRaceStart !== raceInfo.startTime) {
+      familyRaceStart = raceInfo.startTime;
+      clearInterval(familyChronoTimer);
+      familyChronoTimer = setInterval(updateFamilyChrono, 1000);
+      updateFamilyChrono();
+      const t = new Date(raceInfo.startTime);
+      document.getElementById('fRaceStart').textContent =
+        t.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+    }
+    if (position?.speed !== null && position?.speed !== undefined)
+      document.getElementById('fRaceSpeed').textContent = position.speed;
+    if (position?.etaStr)
+      document.getElementById('fRaceEta').textContent = position.etaStr;
+  }
+
+  // Marqueur pilote : point rouge pulsant
   const riderIcon = L.divIcon({
-    html: `<div style="
-      width:16px;height:16px;border-radius:50%;
-      background:#E24B4A;
-      border:3px solid #fff;
-      box-shadow:0 0 0 3px rgba(226,75,74,0.4),0 2px 8px rgba(0,0,0,0.5);
-      animation:rider-pulse 1.8s ease-in-out infinite;
-    "></div>
+    html: `<div style="width:16px;height:16px;border-radius:50%;background:#E24B4A;border:3px solid #fff;box-shadow:0 0 0 3px rgba(226,75,74,0.4),0 2px 8px rgba(0,0,0,0.5);animation:rider-pulse 1.8s ease-in-out infinite;"></div>
     <style>@keyframes rider-pulse{0%,100%{box-shadow:0 0 0 3px rgba(226,75,74,0.4),0 2px 8px rgba(0,0,0,0.5);}50%{box-shadow:0 0 0 8px rgba(226,75,74,0.1),0 2px 8px rgba(0,0,0,0.5);}}</style>`,
     className: '', iconSize:[16,16], iconAnchor:[8,8]
   });
@@ -422,10 +361,8 @@
   // ── HAVERSINE ──
   function haversine(a, b) {
     const R = 6371;
-    const dLat = (b.lat - a.lat) * Math.PI / 180;
-    const dLng = (b.lng - a.lng) * Math.PI / 180;
-    const x = Math.sin(dLat/2)**2 +
-              Math.cos(a.lat*Math.PI/180) * Math.cos(b.lat*Math.PI/180) * Math.sin(dLng/2)**2;
+    const dLat = (b.lat-a.lat)*Math.PI/180, dLng = (b.lng-a.lng)*Math.PI/180;
+    const x = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
     return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
   }
 
@@ -434,166 +371,97 @@
     const doc = new DOMParser().parseFromString(xml, 'text/xml');
     const raw = [];
     doc.querySelectorAll('trkpt, rtept').forEach(pt => {
-      const lat = parseFloat(pt.getAttribute('lat'));
-      const lng = parseFloat(pt.getAttribute('lon'));
       const eleEl = pt.querySelector('ele');
-      raw.push({ lat, lng, ele: eleEl ? parseFloat(eleEl.textContent) : null });
+      raw.push({ lat:parseFloat(pt.getAttribute('lat')), lng:parseFloat(pt.getAttribute('lon')), ele:eleEl?parseFloat(eleEl.textContent):null });
     });
-
-    let cumDist = 0, up = 0, down = 0;
-    const result = raw.map((pt, i) => {
+    let cum = 0, up = 0, down = 0;
+    const result = raw.map((p, i) => {
       if (i > 0) {
-        cumDist += haversine(raw[i-1], pt);
-        if (pt.ele !== null && raw[i-1].ele !== null) {
-          const diff = pt.ele - raw[i-1].ele;
+        cum += haversine(raw[i-1], p);
+        if (p.ele !== null && raw[i-1].ele !== null) {
+          const diff = p.ele - raw[i-1].ele;
           if (diff > 0) up += diff; else down += Math.abs(diff);
         }
       }
-      return { ...pt, dist: cumDist };
+      return { ...p, dist: cum };
     });
-
-    totalDist = cumDist;
-    totalUp   = Math.round(up);
-    totalDown = Math.round(down);
+    totalDist = cum; totalUp = Math.round(up); totalDown = Math.round(down);
     return result;
   }
 
-  // ── DRAW ELEVATION PROFILE ──
+  // ── DRAW ELEVATION ──
   function drawElevation(riderIdx) {
     if (gpxPoints.length === 0) return;
-
     const canvas = document.getElementById('elevCanvas');
     const wrap   = document.getElementById('elevWrap');
     const dpr    = window.devicePixelRatio || 1;
-    const W = wrap.clientWidth;
-    const H = wrap.clientHeight;
-    if (W === 0 || H === 0) return;
-
-    canvas.width  = W * dpr;
-    canvas.height = H * dpr;
-    canvas.style.width  = W + 'px';
-    canvas.style.height = H + 'px';
-
+    const W = wrap.clientWidth, H = wrap.clientHeight;
+    if (!W || !H) return;
+    canvas.width = W*dpr; canvas.height = H*dpr;
+    canvas.style.width = W+'px'; canvas.style.height = H+'px';
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, W, H);
 
-    const hasEle = gpxPoints.some(p => p.ele !== null);
-    const eles   = gpxPoints.map(p => p.ele ?? 0);
-    const minE   = Math.min(...eles);
-    const maxE   = Math.max(...eles);
-    const range  = maxE - minE || 1;
-
-    const pad = { top: 10, right: 14, bottom: 20, left: 40 };
-    const cW  = W - pad.left - pad.right;
-    const cH  = H - pad.top  - pad.bottom;
-
-    const xOf = i => pad.left + (gpxPoints[i].dist / (totalDist || 1)) * cW;
+    const eles = gpxPoints.map(p => p.ele ?? 0);
+    const minE = Math.min(...eles), maxE = Math.max(...eles), range = maxE - minE || 1;
+    const pad = { top:10, right:14, bottom:20, left:40 };
+    const cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+    const xOf = i => pad.left + (gpxPoints[i].dist / (totalDist||1)) * cW;
     const yOf = i => pad.top  + (1 - (eles[i] - minE) / range) * cH;
-
     const riderX = riderIdx !== null ? xOf(riderIdx) : pad.left;
 
-    // Gradient fills
-    const gradDone = ctx.createLinearGradient(0, pad.top, 0, pad.top+cH);
-    gradDone.addColorStop(0, 'rgba(232,80,10,0.55)');
-    gradDone.addColorStop(1, 'rgba(232,80,10,0.03)');
-
-    const gradRest = ctx.createLinearGradient(0, pad.top, 0, pad.top+cH);
-    gradRest.addColorStop(0, 'rgba(136,133,128,0.2)');
-    gradRest.addColorStop(1, 'rgba(136,133,128,0.02)');
-
-    function tracePath() {
-      ctx.beginPath();
-      ctx.moveTo(xOf(0), yOf(0));
-      for (let i = 1; i < gpxPoints.length; i++) ctx.lineTo(xOf(i), yOf(i));
-    }
-
-    // Fill remaining
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(riderX, 0, W, H);
-    ctx.clip();
-    tracePath();
-    ctx.lineTo(xOf(gpxPoints.length-1), pad.top+cH);
-    ctx.lineTo(pad.left, pad.top+cH);
-    ctx.closePath();
-    ctx.fillStyle = gradRest;
-    ctx.fill();
-    ctx.restore();
-
     // Fill done
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, riderX+1, H);
-    ctx.clip();
-    tracePath();
-    ctx.lineTo(riderX, pad.top+cH);
-    ctx.lineTo(pad.left, pad.top+cH);
-    ctx.closePath();
-    ctx.fillStyle = gradDone;
-    ctx.fill();
-    ctx.restore();
+    const gDone = ctx.createLinearGradient(0, pad.top, 0, pad.top+cH);
+    gDone.addColorStop(0, 'rgba(232,80,10,0.55)'); gDone.addColorStop(1, 'rgba(232,80,10,0.03)');
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, riderX+1, H); ctx.clip();
+    ctx.beginPath(); ctx.moveTo(xOf(0), yOf(0));
+    for (let i=1; i<gpxPoints.length; i++) ctx.lineTo(xOf(i), yOf(i));
+    ctx.lineTo(riderX, pad.top+cH); ctx.lineTo(pad.left, pad.top+cH); ctx.closePath();
+    ctx.fillStyle = gDone; ctx.fill(); ctx.restore();
+
+    // Fill rest
+    const gRest = ctx.createLinearGradient(0, pad.top, 0, pad.top+cH);
+    gRest.addColorStop(0, 'rgba(136,133,128,0.2)'); gRest.addColorStop(1, 'rgba(136,133,128,0.02)');
+    ctx.save(); ctx.beginPath(); ctx.rect(riderX, 0, W, H); ctx.clip();
+    ctx.beginPath(); ctx.moveTo(xOf(0), yOf(0));
+    for (let i=1; i<gpxPoints.length; i++) ctx.lineTo(xOf(i), yOf(i));
+    ctx.lineTo(xOf(gpxPoints.length-1), pad.top+cH); ctx.lineTo(pad.left, pad.top+cH); ctx.closePath();
+    ctx.fillStyle = gRest; ctx.fill(); ctx.restore();
 
     // Profile line
-    tracePath();
-    ctx.strokeStyle = '#E8500A';
-    ctx.lineWidth   = 2;
-    ctx.lineJoin    = 'round';
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(xOf(0), yOf(0));
+    for (let i=1; i<gpxPoints.length; i++) ctx.lineTo(xOf(i), yOf(i));
+    ctx.strokeStyle = '#E8500A'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
 
-    // Grid lines Y
+    // Y labels
     [0, 0.5, 1].forEach(t => {
-      const alt = Math.round(minE + t * range);
-      const y   = pad.top + (1-t) * cH;
-      ctx.beginPath();
-      ctx.moveTo(pad.left, y); ctx.lineTo(pad.left+cW, y);
-      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.fillStyle  = 'rgba(136,133,128,0.85)';
-      ctx.font       = '9px DM Sans, sans-serif';
-      ctx.textAlign  = 'right';
-      ctx.fillText(alt + 'm', pad.left - 4, y + 3);
+      const y = pad.top + (1-t)*cH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left+cW, y);
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = 'rgba(136,133,128,0.85)'; ctx.font = '9px DM Sans, sans-serif';
+      ctx.textAlign = 'right'; ctx.fillText(Math.round(minE+t*range)+'m', pad.left-4, y+3);
     });
 
-    // X axis labels
-    ctx.textAlign  = 'center';
-    ctx.fillStyle  = 'rgba(136,133,128,0.8)';
-    ctx.font       = '9px DM Sans, sans-serif';
+    // X labels
+    ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(136,133,128,0.8)'; ctx.font = '9px DM Sans, sans-serif';
     const steps = Math.min(5, Math.floor(totalDist));
-    for (let i = 0; i <= steps; i++) {
-      const d = (i / steps) * totalDist;
-      const x = pad.left + (d / totalDist) * cW;
-      ctx.fillText(d.toFixed(1) + 'km', x, H - 3);
+    for (let i=0; i<=steps; i++) {
+      const d = (i/steps)*totalDist, x = pad.left+(d/(totalDist||1))*cW;
+      ctx.fillText(d.toFixed(1)+'km', x, H-3);
     }
 
-    // Rider marker on profile
+    // Rider marker
     if (riderIdx !== null) {
-      const rx = xOf(riderIdx);
-      const ry = yOf(riderIdx);
-
-      // Dashed vertical line
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(rx, pad.top); ctx.lineTo(rx, pad.top+cH);
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-      ctx.lineWidth   = 1;
-      ctx.setLineDash([3, 4]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-
-      // Dot
-      ctx.beginPath();
-      ctx.arc(rx, ry, 5.5, 0, Math.PI*2);
-      ctx.fillStyle   = '#fff';
-      ctx.fill();
-      ctx.strokeStyle = '#E8500A';
-      ctx.lineWidth   = 2.5;
-      ctx.stroke();
+      const rx = xOf(riderIdx), ry = yOf(riderIdx);
+      ctx.save(); ctx.beginPath(); ctx.moveTo(rx, pad.top); ctx.lineTo(rx, pad.top+cH);
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+      ctx.setLineDash([3,4]); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+      ctx.beginPath(); ctx.arc(rx, ry, 5.5, 0, Math.PI*2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.strokeStyle = '#E8500A'; ctx.lineWidth = 2.5; ctx.stroke();
     }
 
-    // Tooltip
     attachTooltip(xOf, yOf, pad, cW);
   }
 
@@ -601,49 +469,37 @@
     const canvas  = document.getElementById('elevCanvas');
     const tooltip = document.getElementById('elevTooltip');
     const wrap    = document.getElementById('elevWrap');
-
-    const handle = (e) => {
-      const rect    = canvas.getBoundingClientRect();
+    const handle  = (e) => {
+      const rect = canvas.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const mx      = clientX - rect.left;
-      const frac    = Math.max(0, Math.min(1, (mx - pad.left) / cW));
-      const target  = frac * totalDist;
-
+      const mx = clientX - rect.left;
+      const frac = Math.max(0, Math.min(1, (mx-pad.left)/cW));
+      const target = frac * totalDist;
       let best = 0, bestD = Infinity;
-      gpxPoints.forEach((p, i) => {
-        const d = Math.abs(p.dist - target);
-        if (d < bestD) { bestD = d; best = i; }
-      });
-
+      gpxPoints.forEach((p,i) => { const d = Math.abs(p.dist-target); if (d<bestD){bestD=d;best=i;} });
       const p = gpxPoints[best];
       document.getElementById('ttAlt').textContent  = p.ele ? Math.round(p.ele) : '—';
       document.getElementById('ttDist').textContent = p.dist.toFixed(2);
       tooltip.style.display = 'block';
-      const tx = Math.max(pad.left, Math.min(mx, wrap.clientWidth - 110));
-      tooltip.style.left = tx + 'px';
+      tooltip.style.left = Math.max(pad.left, Math.min(mx, wrap.clientWidth-110)) + 'px';
     };
-
-    canvas.onmousemove  = handle;
-    canvas.ontouchmove  = handle;
-    canvas.onmouseleave = () => { tooltip.style.display = 'none'; };
-    canvas.ontouchend   = () => { tooltip.style.display = 'none'; };
+    canvas.onmousemove = handle; canvas.ontouchmove = handle;
+    canvas.onmouseleave = () => { tooltip.style.display='none'; };
+    canvas.ontouchend   = () => { tooltip.style.display='none'; };
   }
 
   // ── FIND CLOSEST GPX POINT ──
   function findClosest(lat, lng) {
     let best = 0, bestD = Infinity;
-    gpxPoints.forEach((p, i) => {
-      const d = (p.lat-lat)**2 + (p.lng-lng)**2;
-      if (d < bestD) { bestD = d; best = i; }
-    });
+    gpxPoints.forEach((p,i) => { const d=(p.lat-lat)**2+(p.lng-lng)**2; if(d<bestD){bestD=d;best=i;} });
     return best;
   }
 
   // ── UPDATE STATS ──
-  function updateStats(idx) {
+  function updateStats(idx, distFromRoute) {
     const done = gpxPoints[idx].dist;
     const left = totalDist - done;
-    const pct  = totalDist > 0 ? Math.round((done / totalDist)*100) : 0;
+    const pct  = totalDist > 0 ? Math.round((done/totalDist)*100) : 0;
     const ele  = gpxPoints[idx].ele;
 
     document.getElementById('statDist').textContent  = totalDist.toFixed(1);
@@ -654,8 +510,17 @@
     document.getElementById('statAlt').textContent   = ele ? Math.round(ele) : '—';
     document.getElementById('progressFill').style.width = pct + '%';
     document.getElementById('progressPct').textContent  = pct + '%';
-    document.getElementById('progressLabel').textContent =
-      done.toFixed(1) + ' km / ' + totalDist.toFixed(1) + ' km';
+    document.getElementById('progressLabel').textContent = done.toFixed(1)+' km / '+totalDist.toFixed(1)+' km';
+
+    // Écart au tracé
+    const ecartEl = document.getElementById('statEcart');
+    if (distFromRoute !== null && distFromRoute !== undefined) {
+      ecartEl.textContent = Math.round(distFromRoute);
+      ecartEl.className = distFromRoute > 200 ? 'stat-val amber' : 'stat-val green';
+    } else {
+      ecartEl.textContent = '—';
+      ecartEl.className = 'stat-val amber';
+    }
   }
 
   // ── LOAD GPX ──
@@ -670,34 +535,21 @@
 
       if (gpxLayer) map.removeLayer(gpxLayer);
       gpxLayer = L.layerGroup().addTo(map);
-
       const latlngs = gpxPoints.map(p => [p.lat, p.lng]);
       L.polyline(latlngs, { color:'rgba(0,0,0,0.35)', weight:8 }).addTo(gpxLayer);
       L.polyline(latlngs, { color:'#E8500A', weight:3.5, opacity:0.88 }).addTo(gpxLayer);
-
-      L.circleMarker(latlngs[0], {
-        radius:8, color:'#3DBA6A', fillColor:'#3DBA6A', fillOpacity:1, weight:2
-      }).bindTooltip('Départ').addTo(gpxLayer);
-
-      L.circleMarker(latlngs[latlngs.length-1], {
-        radius:8, color:'#E24B4A', fillColor:'#E24B4A', fillOpacity:1, weight:2
-      }).bindTooltip('Arrivée').addTo(gpxLayer);
-
+      L.circleMarker(latlngs[0], { radius:8, color:'#3DBA6A', fillColor:'#3DBA6A', fillOpacity:1, weight:2 }).bindTooltip('Départ').addTo(gpxLayer);
+      L.circleMarker(latlngs[latlngs.length-1], { radius:8, color:'#E24B4A', fillColor:'#E24B4A', fillOpacity:1, weight:2 }).bindTooltip('Arrivée').addTo(gpxLayer);
       map.fitBounds(L.polyline(latlngs).getBounds(), { padding:[60,60] });
       gpxLoaded = true;
 
-      // Show panel
       const panel = document.getElementById('elev-panel');
-      panel.style.display = 'flex';
-      panel.style.flexDirection = 'column';
-
+      panel.style.display = 'flex'; panel.style.flexDirection = 'column';
       document.getElementById('statDist').textContent = totalDist.toFixed(1);
       document.getElementById('statUp').textContent   = totalUp;
       document.getElementById('statDown').textContent = totalDown;
-
       setTimeout(() => drawElevation(null), 80);
       showSession();
-
     } catch(e) { console.error('Erreur GPX:', e); }
   }
 
@@ -712,8 +564,7 @@
         gpxLoaded = false;
         if (marker)   { map.removeLayer(marker);   marker = null; }
         if (gpxLayer) { map.removeLayer(gpxLayer); gpxLayer = null; }
-        breadcrumbs.forEach(c => map.removeLayer(c));
-        breadcrumbs = [];
+        breadcrumbs.forEach(c => map.removeLayer(c)); breadcrumbs = [];
         gpxPoints = [];
         document.getElementById('elev-panel').style.display = 'none';
         return;
@@ -721,45 +572,66 @@
 
       showSession();
 
+      // Met à jour le bloc course
+      updateRaceStrip(data.raceInfo, data.position);
+
       if (data.position) {
         const { lat, lng, timestamp, accuracy } = data.position;
+
+        // Utilise la position snappée si disponible, sinon GPS brut
+        const displayLat    = data.position.snappedLat ?? lat;
+        const displayLng    = data.position.snappedLng ?? lng;
+        const distFromRoute = data.position.distFromRoute;
+        const routeProgress = data.position.routeProgress;
+        const startWarning  = data.position.startWarning;
+
         const age = Date.now() - data.position.updatedAt;
 
+        // Live dot
         const dot = document.getElementById('liveDot');
         const lbl = document.getElementById('liveLabel');
         if      (age < 60000)  { dot.className='live-dot online';  lbl.textContent='En direct'; }
         else if (age < 300000) { dot.className='live-dot stale';   lbl.textContent='Récent'; }
         else                   { dot.className='live-dot offline';  lbl.textContent='Ancien'; }
 
-        if (marker) marker.setLatLng([lat, lng]);
-        else        marker = L.marker([lat, lng], { icon: riderIcon }).addTo(map);
+        // Marqueur principal sur position snappée
+        if (marker) marker.setLatLng([displayLat, displayLng]);
+        else        marker = L.marker([displayLat, displayLng], { icon: riderIcon }).addTo(map);
+
+        // Avertissement hors tracé
+        const offRouteEl = document.getElementById('offRouteWarn');
+        if (distFromRoute !== null && distFromRoute > 200) {
+          offRouteEl.style.display = 'flex';
+          offRouteEl.textContent = startWarning
+            ? `⚠️ Loin du départ (${(distFromRoute/1000).toFixed(1)} km)`
+            : `⚠️ À ${Math.round(distFromRoute)}m du tracé`;
+        } else {
+          offRouteEl.style.display = 'none';
+        }
 
         if (!lastPosition || lastPosition.timestamp !== timestamp) {
           positionCount++;
-          if (positionCount === 1) map.setView([lat, lng], Math.max(map.getZoom(), 14));
+          if (positionCount === 1) map.setView([displayLat, displayLng], Math.max(map.getZoom(), 14));
 
-          // Breadcrumb dot for this position
+          // Breadcrumb coloré selon écart au tracé
+          const crumbColor = (distFromRoute !== null && distFromRoute > 200) ? '#F0A827' : '#E24B4A';
           const crumbIcon = L.divIcon({
-            html: `<div style="
-              width:8px;height:8px;border-radius:50%;
-              background:#E24B4A;opacity:0.55;
-              border:1.5px solid rgba(255,255,255,0.6);
-              box-shadow:0 1px 4px rgba(0,0,0,0.4);
-            "></div>`,
-            className: '', iconSize:[8,8], iconAnchor:[4,4]
+            html: `<div style="width:8px;height:8px;border-radius:50%;background:${crumbColor};opacity:0.65;border:1.5px solid rgba(255,255,255,0.6);box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>`,
+            className:'', iconSize:[8,8], iconAnchor:[4,4]
           });
           const t = new Date(timestamp);
-          const timeStr = t.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
-          const crumb = L.marker([lat, lng], { icon: crumbIcon, zIndexOffset: -100 })
-            .bindTooltip(`📍 ${timeStr}`, { permanent: false, direction: 'top' })
+          const timeStr = t.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+          const pctStr  = routeProgress !== null ? ` · ${Math.round(routeProgress*100)}%` : '';
+          const crumb = L.marker([displayLat, displayLng], { icon:crumbIcon, zIndexOffset:-100 })
+            .bindTooltip(`📍 ${timeStr}${pctStr}`, { permanent:false, direction:'top' })
             .addTo(map);
           breadcrumbs.push(crumb);
 
           lastPosition = data.position;
 
           if (gpxPoints.length > 0) {
-            currentIdx = findClosest(lat, lng);
-            updateStats(currentIdx);
+            currentIdx = findClosest(displayLat, displayLng);
+            updateStats(currentIdx, distFromRoute);
             drawElevation(currentIdx);
           }
         }
@@ -770,12 +642,13 @@
   function showSession() { document.getElementById('noSessionOverlay').classList.add('hidden'); }
   function hideSession()  {
     document.getElementById('noSessionOverlay').classList.remove('hidden');
-    document.getElementById('liveDot').className  = 'live-dot';
+    document.getElementById('liveDot').className = 'live-dot';
     document.getElementById('liveLabel').textContent = 'En attente';
+    document.getElementById('offRouteWarn').style.display = 'none';
   }
 
   function centerOnRider() {
-    if (lastPosition) map.setView([lastPosition.lat, lastPosition.lng], Math.max(map.getZoom(), 15), { animate:true });
+    if (lastPosition) map.setView([lastPosition.snappedLat ?? lastPosition.lat, lastPosition.snappedLng ?? lastPosition.lng], Math.max(map.getZoom(), 15), { animate:true });
   }
 
   function fitGPX() {
@@ -790,9 +663,7 @@
     setTimeout(() => btn.classList.remove('spinning'), 600);
   }
 
-  window.addEventListener('resize', () => {
-    if (gpxPoints.length > 0) setTimeout(() => drawElevation(currentIdx), 50);
-  });
+  window.addEventListener('resize', () => { if (gpxPoints.length > 0) setTimeout(() => drawElevation(currentIdx), 50); });
 
   // ── INIT ──
   loadGPX();

@@ -131,7 +131,46 @@
     .text-input:focus { border-color: rgba(232,80,10,0.5); }
     .text-input::placeholder { color: var(--muted); }
 
-    /* ══ SAVE ROUTE BUTTON ══ */
+    /* ══ RACE INFO BLOCK ══ */
+    .race-block {
+      width: 100%; display: none; flex-direction: column; gap: 8px;
+    }
+    .race-block.visible { display: flex; }
+
+    .race-stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .race-stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 11px 14px;
+    }
+    .race-stat .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 3px; }
+    .race-stat .val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; line-height: 1; letter-spacing: 0.5px; }
+    .race-stat .val.green  { color: var(--green); }
+    .race-stat .val.orange { color: var(--orange); }
+    .race-stat .val.blue   { color: var(--blue); }
+    .race-stat .val.amber  { color: var(--amber); }
+
+    .start-btn {
+      width: 100%; padding: 14px; border-radius: var(--radius);
+      border: 1px solid rgba(61,186,106,0.4);
+      background: rgba(61,186,106,0.1);
+      color: var(--green); font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s; -webkit-appearance: none;
+    }
+    .start-btn:active { background: rgba(61,186,106,0.2); }
+    .start-btn:disabled { opacity: 0.4; pointer-events: none; }
+
+    .visitors-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: var(--muted); padding: 6px 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; width: fit-content;
+    }
+    .visitors-badge strong { color: var(--text); font-size: 13px; }
     .save-route-btn {
       width: 100%; padding: 13px; border-radius: var(--radius);
       border: 1px solid rgba(61,186,106,0.35);
@@ -301,6 +340,51 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner { display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 4px; }
     .spinner.visible { display: block; }
+
+    /* ══ AUTO SEND ══ */
+    .auto-row {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; padding: 10px 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; gap: 12px;
+    }
+    .auto-left { display: flex; align-items: center; gap: 10px; }
+    .auto-right { display: flex; align-items: center; gap: 8px; }
+
+    .auto-toggle {
+      width: 40px; height: 22px; border-radius: 100px;
+      background: rgba(255,255,255,0.1); border: 1px solid var(--border);
+      cursor: pointer; position: relative; padding: 0;
+      transition: background 0.3s; -webkit-appearance: none;
+      flex-shrink: 0;
+    }
+    .auto-toggle.on { background: var(--green); border-color: var(--green); }
+    .auto-toggle-dot {
+      position: absolute; top: 3px; left: 3px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: rgba(255,255,255,0.5);
+      transition: transform 0.3s, background 0.3s;
+    }
+    .auto-toggle.on .auto-toggle-dot { transform: translateX(18px); background: white; }
+
+    .auto-label { font-size: 13px; font-weight: 500; color: var(--text); }
+
+    .auto-select {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 12px;
+      padding: 5px 8px; outline: none; cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+    }
+    .auto-select:disabled { opacity: 0.4; pointer-events: none; }
+
+    .auto-countdown {
+      font-family: 'Bebas Neue', sans-serif; font-size: 16px;
+      color: var(--green); letter-spacing: 1px;
+      min-width: 36px; text-align: right;
+      transition: color 0.3s;
+    }
+    .auto-countdown.urgent { color: var(--orange); }
   </style>
 </head>
 <body>
@@ -377,15 +461,11 @@
       <div class="import-tabs">
         <button class="import-tab active" id="tabGpx" onclick="switchTab('gpx')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-          GPX
+          Fichier GPX
         </button>
         <button class="import-tab strava-tab" id="tabStrava" onclick="switchTab('strava')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           Strava
-        </button>
-        <button class="import-tab komoot-tab" id="tabKomoot" onclick="switchTab('komoot')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-          Komoot
         </button>
       </div>
 
@@ -416,21 +496,6 @@
       <div class="import-panel" id="panelStrava">
         <div class="strava-connect-block" id="stravaBlock"></div>
       </div>
-
-      <!-- Komoot Panel -->
-      <div class="import-panel" id="panelKomoot">
-        <div class="komoot-wrap">
-          <div class="komoot-input-row">
-            <input type="url" class="text-input" id="komootUrl" placeholder="https://www.komoot.com/tour/…" autocomplete="off" autocorrect="off" spellcheck="false">
-            <button class="komoot-btn" id="komootImportBtn" onclick="importKomoot()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-              </svg>
-            </button>
-          </div>
-          <div class="komoot-status" id="komootStatus"></div>
-        </div>
-      </div>
     </div>
 
     <!-- MAP + ELEVATION -->
@@ -459,6 +524,27 @@
           <div class="coords-line" id="coordsLine"></div>
         </div>
       </div>
+
+      <!-- AUTO SEND ROW -->
+      <div class="auto-row">
+        <div class="auto-left">
+          <button class="auto-toggle" id="autoToggle" onclick="toggleAuto()">
+            <span class="auto-toggle-dot" id="autoToggleDot"></span>
+          </button>
+          <span class="auto-label">Envoi auto</span>
+        </div>
+        <div class="auto-right">
+          <select class="auto-select" id="autoInterval" onchange="changeInterval()">
+            <option value="60">1 min</option>
+            <option value="300" selected>5 min</option>
+            <option value="600">10 min</option>
+            <option value="900">15 min</option>
+            <option value="1200">20 min</option>
+            <option value="1800">30 min</option>
+          </select>
+          <span class="auto-countdown" id="autoCountdown"></span>
+        </div>
+      </div>
       <div class="stats-row">
         <div class="stat-card">
           <div class="lbl">Envois</div>
@@ -469,6 +555,40 @@
           <div class="lbl">Dernier envoi</div>
           <div class="val" id="lastSendTime">—</div>
           <div class="sub" id="lastAccuracy">précision —</div>
+        </div>
+      </div>
+
+      <!-- BOUTON DÉMARRER -->
+      <button class="start-btn" id="startBtn" onclick="startRace()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Démarrer le chrono
+      </button>
+
+      <!-- BLOC COURSE -->
+      <div class="race-block" id="raceBlock">
+        <div class="race-stats-grid">
+          <div class="race-stat">
+            <div class="lbl">Départ</div>
+            <div class="val green" id="raceStartTime">—</div>
+          </div>
+          <div class="race-stat">
+            <div class="lbl">Temps écoulé</div>
+            <div class="val orange" id="raceElapsed">—</div>
+          </div>
+          <div class="race-stat">
+            <div class="lbl">Vitesse moy.</div>
+            <div class="val blue" id="raceSpeed">—</div>
+          </div>
+          <div class="race-stat">
+            <div class="lbl">Arrivée estimée</div>
+            <div class="val amber" id="raceEta">—</div>
+          </div>
+        </div>
+        <div class="visitors-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span id="visitorsCount"><strong>0</strong> spectateur(s) en ligne</span>
         </div>
       </div>
     </div>
@@ -511,6 +631,165 @@
   let totalDist     = 0;
   let stravaPage    = 1;
 
+  // ── Auto send ──
+  let autoActive    = false;
+  let autoTimer     = null;
+  let autoCountdown = 0;
+  let autoTickTimer = null;
+
+  // ── Race / chrono ──
+  let raceStartTime  = null;
+  let raceTickTimer  = null;
+
+  function startRace() {
+    const btn = document.getElementById('startBtn');
+    btn.disabled = true;
+    btn.textContent = 'Localisation…';
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      try {
+        const res  = await fetch(`${API_URL}/api/race/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lat, lng })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.error || 'Impossible de démarrer');
+          btn.disabled = false;
+          btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Démarrer le chrono`;
+          return;
+        }
+
+        raceStartTime = data.startTime;
+        launchChronoTick();
+        showRaceBlock();
+
+        btn.style.display = 'none'; // cache le bouton une fois démarré
+
+      } catch(e) {
+        alert('Erreur : ' + e.message);
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Démarrer le chrono`;
+      }
+    }, (err) => {
+      alert('Impossible de récupérer ta position : ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Démarrer le chrono`;
+    }, { enableHighAccuracy: true, timeout: 10000 });
+  }
+
+  function launchChronoTick() {
+    clearInterval(raceTickTimer);
+    raceTickTimer = setInterval(updateChronoDisplay, 1000);
+    updateChronoDisplay();
+  }
+
+  function updateChronoDisplay() {
+    if (!raceStartTime) return;
+    const elapsed = Date.now() - raceStartTime;
+    const h = Math.floor(elapsed / 3600000);
+    const m = Math.floor((elapsed % 3600000) / 60000);
+    const s = Math.floor((elapsed % 60000) / 1000);
+    const str = h > 0
+      ? `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`
+      : `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    const el = document.getElementById('raceElapsed');
+    if (el) el.textContent = str;
+  }
+
+  function showRaceBlock(data) {
+    document.getElementById('raceBlock').classList.add('visible');
+    if (raceStartTime) {
+      const t = new Date(raceStartTime);
+      document.getElementById('raceStartTime').textContent =
+        t.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+    }
+    if (data) {
+      if (data.speed !== null && data.speed !== undefined)
+        document.getElementById('raceSpeed').textContent = data.speed + ' km/h';
+      if (data.etaStr)
+        document.getElementById('raceEta').textContent = data.etaStr;
+    }
+  }
+
+  // Polling visiteurs toutes les 15s
+  setInterval(async () => {
+    if (!raceStartTime) return;
+    try {
+      const res  = await fetch(`${API_URL}/api/position`);
+      const data = await res.json();
+      if (data.visitors !== undefined) {
+        document.getElementById('visitorsCount').innerHTML =
+          `<strong>${data.visitors}</strong> spectateur(s) en ligne`;
+      }
+      if (data.position?.speed !== undefined)
+        showRaceBlock(data.position);
+    } catch {}
+  }, 15000);
+
+  function toggleAuto() {
+    autoActive = !autoActive;
+    const btn       = document.getElementById('autoToggle');
+    const select    = document.getElementById('autoInterval');
+    const countdown = document.getElementById('autoCountdown');
+
+    btn.classList.toggle('on', autoActive);
+
+    if (autoActive) {
+      select.disabled = false;
+      startAutoTimer();
+    } else {
+      select.disabled = false;
+      clearTimeout(autoTimer);
+      clearInterval(autoTickTimer);
+      autoTimer = null; autoTickTimer = null;
+      countdown.textContent = '';
+      countdown.className = 'auto-countdown';
+    }
+  }
+
+  function changeInterval() {
+    if (!autoActive) return;
+    clearTimeout(autoTimer);
+    clearInterval(autoTickTimer);
+    startAutoTimer();
+  }
+
+  function startAutoTimer() {
+    const intervalSec = parseInt(document.getElementById('autoInterval').value, 10);
+    autoCountdown = intervalSec;
+    updateCountdownDisplay();
+
+    autoTickTimer = setInterval(() => {
+      autoCountdown--;
+      updateCountdownDisplay();
+      if (autoCountdown <= 0) {
+        clearInterval(autoTickTimer);
+        autoTickTimer = null;
+      }
+    }, 1000);
+
+    autoTimer = setTimeout(async () => {
+      clearInterval(autoTickTimer);
+      if (autoActive) {
+        await sendPosition();
+        startAutoTimer(); // repart pour le prochain cycle
+      }
+    }, intervalSec * 1000);
+  }
+
+  function updateCountdownDisplay() {
+    const el = document.getElementById('autoCountdown');
+    if (!autoActive) { el.textContent = ''; return; }
+    const m = Math.floor(autoCountdown / 60);
+    const s = autoCountdown % 60;
+    el.textContent = m > 0 ? `${m}:${s.toString().padStart(2,'0')}` : `${autoCountdown}s`;
+    el.className = autoCountdown <= 10 ? 'auto-countdown urgent' : 'auto-countdown';
+  }
+
   // ── Vérifie retour OAuth Strava dans l'URL ──
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('strava') === 'connected') {
@@ -535,6 +814,13 @@
         document.getElementById('gpxDropSub').textContent  = 'Session active';
         document.getElementById('gpxDrop').classList.add('loaded');
         document.getElementById('sessionName').value = d.session.name || '';
+      }
+      // Restaure le chrono si course déjà démarrée
+      if (d.session.raceInfo?.startTime) {
+        raceStartTime = d.session.raceInfo.startTime;
+        launchChronoTick();
+        showRaceBlock();
+        document.getElementById('startBtn').style.display = 'none';
       }
       if (d.session.breadcrumbs) {
         sendCount = d.session.breadcrumbs.length;
@@ -943,19 +1229,64 @@
       const pos=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:12000,maximumAge:0}));
       statusTxt.textContent='Envoi…';
       const{latitude:lat,longitude:lng,accuracy}=pos.coords;
-      await fetch(`${API_URL}/api/position`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat,lng,accuracy,timestamp:Date.now()})});
+
+      const resp = await fetch(`${API_URL}/api/position`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat,lng,accuracy,timestamp:Date.now()})});
+      const data = await resp.json();
+
       setSessionActive(true);
       sendCount++;
       const now=new Date(),timeStr=now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
       document.getElementById('sendCount').textContent=sendCount;
       document.getElementById('lastSendTime').textContent=timeStr;
       document.getElementById('lastAccuracy').textContent=`précision ±${Math.round(accuracy)}m`;
-      statusTxt.textContent='Position envoyée !';statusTxt.className='status-text success';
-      coordsLn.textContent=`${lat.toFixed(5)}, ${lng.toFixed(5)}`;coordsLn.classList.add('visible');
-      addHistoryItem(timeStr,lat,lng,accuracy);
-      if(piloteMap){if(posMarker)posMarker.setLatLng([lat,lng]);else posMarker=L.circleMarker([lat,lng],{radius:7,color:'#E24B4A',fillColor:'#E24B4A',fillOpacity:1,weight:2}).addTo(piloteMap);}
-      if(gpxPoints.length>0){let best=0,bestD=Infinity;gpxPoints.forEach((p,i)=>{const d=(p.lat-lat)**2+(p.lng-lng)**2;if(d<bestD){bestD=d;best=i;}});drawMiniElev(best);}
-      setTimeout(()=>{statusTxt.textContent='Appuie pour partager ta position';statusTxt.className='status-text';},3000);
+
+      // Feedback snap-to-route
+      if (data.startWarning) {
+        // Trop loin du départ
+        const distKm = data.distFromRoute ? (data.distFromRoute/1000).toFixed(1) : '?';
+        statusTxt.textContent = `⚠️ Tu es à ${distKm} km du départ`;
+        statusTxt.className = 'status-text error';
+        coordsLn.textContent = 'Position envoyée mais loin du tracé';
+        coordsLn.classList.add('visible');
+      } else if (data.distFromRoute !== null && data.distFromRoute > 200) {
+        // Écarté du tracé (> 200m)
+        const distM = Math.round(data.distFromRoute);
+        statusTxt.textContent = `⚠️ À ${distM}m du tracé`;
+        statusTxt.className = 'status-text error';
+        coordsLn.textContent = 'Accrochage au point le plus proche';
+        coordsLn.classList.add('visible');
+      } else if (data.snapped) {
+        // Bien sur le tracé
+        const pct = data.routeProgress !== null ? Math.round(data.routeProgress*100) : null;
+        statusTxt.textContent = pct !== null ? `✓ ${pct}% du parcours` : '✓ Position envoyée !';
+        statusTxt.className = 'status-text success';
+        coordsLn.textContent = `Tracé : ${data.snapped.lat.toFixed(5)}, ${data.snapped.lng.toFixed(5)}`;
+        coordsLn.classList.add('visible');
+      } else {
+        statusTxt.textContent = '✓ Position envoyée !';
+        statusTxt.className = 'status-text success';
+        coordsLn.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        coordsLn.classList.add('visible');
+      }
+
+      addHistoryItem(timeStr, lat, lng, accuracy, data.distFromRoute, data.routeProgress);
+
+      // Marqueur sur la carte pilote : utilise la position snappée si dispo
+      const displayLat = data.snapped ? data.snapped.lat : lat;
+      const displayLng = data.snapped ? data.snapped.lng : lng;
+      if(piloteMap){
+        if(posMarker) posMarker.setLatLng([displayLat, displayLng]);
+        else posMarker=L.circleMarker([displayLat,displayLng],{radius:7,color:'#E24B4A',fillColor:'#E24B4A',fillOpacity:1,weight:2}).addTo(piloteMap);
+      }
+
+      // Mise à jour profil altimétrique
+      if(gpxPoints.length>0){
+        let best=0,bestD=Infinity;
+        gpxPoints.forEach((p,i)=>{const d=(p.lat-displayLat)**2+(p.lng-displayLng)**2;if(d<bestD){bestD=d;best=i;}});
+        drawMiniElev(best);
+      }
+
+      setTimeout(()=>{statusTxt.textContent='Appuie pour partager ta position';statusTxt.className='status-text';},4000);
     } catch(err){
       statusTxt.textContent=err.code===1?'Géolocalisation refusée':err.code===3?'Temps dépassé':'Erreur : '+(err.message||'inconnue');
       statusTxt.className='status-text error';
@@ -964,11 +1295,20 @@
   }
 
   // ── HISTORY ──
-  function addHistoryItem(time,lat,lng,acc){
-    historyItems.unshift({time,lat,lng,acc});if(historyItems.length>20)historyItems.pop();
+  function addHistoryItem(time,lat,lng,acc,distFromRoute,routeProgress){
+    const pct = routeProgress !== null && routeProgress !== undefined ? Math.round(routeProgress*100) : null;
+    const dist = distFromRoute !== null && distFromRoute !== undefined ? Math.round(distFromRoute) : null;
+    historyItems.unshift({time,lat,lng,acc,dist,pct});
+    if(historyItems.length>20)historyItems.pop();
     document.getElementById('historySection').style.display='block';
     document.getElementById('accCount').textContent=historyItems.length;
-    document.getElementById('historyList').innerHTML=historyItems.map(h=>`<div class="history-item"><div class="h-dot"></div><span class="h-time">${h.time}</span><span class="h-coords">${h.lat.toFixed(5)}, ${h.lng.toFixed(5)}</span><span class="h-acc">±${Math.round(h.acc)}m</span></div>`).join('');
+    document.getElementById('historyList').innerHTML=historyItems.map(h=>`
+      <div class="history-item">
+        <div class="h-dot" style="${h.dist!==null&&h.dist>200?'background:var(--amber)':''}"></div>
+        <span class="h-time">${h.time}</span>
+        <span class="h-coords">${h.lat.toFixed(4)}, ${h.lng.toFixed(4)}</span>
+        <span class="h-acc">${h.pct!==null?h.pct+'%':''} ${h.dist!==null?'±'+h.dist+'m':''}</span>
+      </div>`).join('');
   }
   function toggleAccordion(){document.getElementById('accordionBtn').classList.toggle('open');document.getElementById('accordionBody').classList.toggle('open');}
 
@@ -981,6 +1321,22 @@
 
   async function endSession(){
     if(!confirm('Terminer la session de suivi ?'))return;
+
+    // Arrête l'envoi automatique
+    autoActive = false;
+    clearTimeout(autoTimer); clearInterval(autoTickTimer);
+    autoTimer = null; autoTickTimer = null;
+    document.getElementById('autoToggle').classList.remove('on');
+    document.getElementById('autoCountdown').textContent = '';
+
+    // Arrête le chrono
+    raceStartTime = null;
+    clearInterval(raceTickTimer); raceTickTimer = null;
+    document.getElementById('raceBlock').classList.remove('visible');
+    document.getElementById('startBtn').style.display = '';
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('startBtn').innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Démarrer le chrono`;
+
     await fetch(`${API_URL}/api/session/end`,{method:'POST'});
     setSessionActive(false);
     sendCount=0;historyItems=[];

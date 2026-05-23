@@ -71,10 +71,13 @@ function httpsPost(url, body, headers = {}) {
 }
 
 // ── État ──
-let sessions      = readJSON(SESSIONS_FILE, []);
-let activeSession = readJSON(ACTIVE_FILE, null);
+let sessions        = readJSON(SESSIONS_FILE, []);
+let activeSession   = readJSON(ACTIVE_FILE, null);
 let currentPosition = activeSession ? activeSession.lastPosition || null : null;
-let stravaTokens  = readJSON(STRAVA_FILE, null);
+let stravaTokens    = readJSON(STRAVA_FILE, null);
+
+// ── Compteur de visiteurs uniques (page famille) ──
+let sessionVisitors = new Set(); // IPs uniques, remis à zéro à chaque session
 
 // ── Refresh Strava token si expiré ──
 async function getValidStravaToken() {
@@ -253,175 +256,192 @@ app.get('/api/strava/activity/:id/gpx', async (req, res) => {
 });
 
 // ═══════════════════════════════
-//  ROUTES KOMOOT
-// ═══════════════════════════════
-
-app.post('/api/komoot/import', async (req, res) => {
-  const { url } = req.body;
-  if (!url) return res.status(400).json({ error: 'URL manquante' });
-
-  const match = url.match(/(?:smarttour|tour)\/([a-zA-Z0-9]+)/);
-  if (!match) {
-    return res.status(400).json({ error: 'URL Komoot invalide — colle un lien komoot.com/tour/... ou komoot.com/smarttour/...' });
-  }
-  const tourId = match[1];
-
-  try {
-    // Komoot expose les données de la page en JSON dans un tag <script>
-    // On fetch la page HTML et on extrait le JSON embarqué
-    const pageHtml = await new Promise((resolve, reject) => {
-      const urlObj = new URL(`https://www.komoot.com/smarttour/${tourId}`);
-      const options = {
-        hostname: urlObj.hostname,
-        path: urlObj.pathname,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'fr-FR,fr;q=0.9',
-        }
-      };
-      const request = https.request(options, (response) => {
-        // Gère les redirections
-        if (response.statusCode === 301 || response.statusCode === 302) {
-          const redirectUrl = response.headers.location;
-          const redirObj = new URL(redirectUrl.startsWith('http') ? redirectUrl : `https://www.komoot.com${redirectUrl}`);
-          const redirOptions = { ...options, hostname: redirObj.hostname, path: redirObj.pathname + redirObj.search };
-          https.request(redirOptions, (r2) => {
-            let d = '';
-            r2.on('data', c => d += c);
-            r2.on('end', () => resolve(d));
-          }).on('error', reject).end();
-          return;
-        }
-        let data = '';
-        response.on('data', chunk => data += chunk);
-        response.on('end', () => resolve(data));
-      });
-      request.on('error', reject);
-      request.end();
-    });
-
-    // Cherche le JSON embarqué dans la page
-    // Komoot injecte les données du tour dans window.__komoot_store__ ou similaire
-    let tourData = null;
-
-    // Méthode 1 : cherche les coordonnées dans les données JSON de la page
-    const jsonMatch = pageHtml.match(/kmtBoot\.init\(({.+})\)/s) ||
-                      pageHtml.match(/"coordinates"\s*:\s*\{"items"\s*:\s*(\[.+?\])/s) ||
-                      pageHtml.match(/window\.__INITIAL_STATE__\s*=\s*({.+?})\s*;<\/script>/s);
-
-    // Méthode 2 : extraction directe des coordonnées via regex
-    const coordsMatch = pageHtml.match(/"latlng"\s*:\s*\[([^\]]+)\]/g) ||
-                        pageHtml.match(/{"lat"\s*:\s*([\d.]+)\s*,\s*"lng"\s*:\s*([\d.]+)/g);
-
-    // Méthode 3 : cherche le bloc de données de la carte
-    const tileDataMatch = pageHtml.match(/"path"\s*:\s*"([A-Za-z0-9+/=_-]+)"/);
-
-    // Extraction du nom du tour depuis la page HTML
-    const nameMatch = pageHtml.match(/<title[^>]*>([^<]+)<\/title>/) ||
-                      pageHtml.match(/"name"\s*:\s*"([^"]+)"/);
-    const tourName = nameMatch ? nameMatch[1].replace(' | komoot', '').trim() : 'Tour Komoot';
-
-    // Extraction des points GPS depuis les données JSON embarquées
-    const pointsData = [];
-
-    // Cherche le pattern des coordonnées Komoot dans le HTML
-    const latLngPattern = /"lat"\s*:\s*([\d.-]+)\s*,\s*"lng"\s*:\s*([\d.-]+)(?:\s*,\s*"alt"\s*:\s*([\d.-]+))?/g;
-    let ptMatch;
-    while ((ptMatch = latLngPattern.exec(pageHtml)) !== null) {
-      pointsData.push({
-        lat: parseFloat(ptMatch[1]),
-        lng: parseFloat(ptMatch[2]),
-        alt: ptMatch[3] ? parseFloat(ptMatch[3]) : null
-      });
-    }
-
-    if (pointsData.length < 2) {
-      // Fallback : essaie l'API avec un User-Agent différent
-      const apiData = await httpsGet(
-        `https://www.komoot.com/api/v007/tours/${tourId}?_embedded=coordinates`,
-        {
-          'User-Agent': 'Komoot/12.0 (iPhone; iOS 16.0)',
-          'Accept': 'application/json',
-          'Referer': 'https://www.komoot.com/'
-        }
-      );
-
-      if (apiData && apiData._embedded && apiData._embedded.coordinates) {
-        const items = apiData._embedded.coordinates.items;
-        items.forEach(pt => pointsData.push({ lat: pt.lat, lng: pt.lng, alt: pt.alt || null }));
-        tourData = apiData;
-      }
-    }
-
-    if (pointsData.length < 2) {
-      return res.status(404).json({
-        error: 'Impossible d\'extraire le tracé. Ce tour est peut-être privé ou le format a changé. Utilise l\'option "Fichier GPX" à la place.'
-      });
-    }
-
-    // Dédupliquer les points consécutifs identiques
-    const uniquePoints = pointsData.filter((pt, i) =>
-      i === 0 || pt.lat !== pointsData[i-1].lat || pt.lng !== pointsData[i-1].lng
-    );
-
-    // Infos du tour
-    const distMatch = pageHtml.match(/"distance"\s*:\s*([\d.]+)/);
-    const elevMatch = pageHtml.match(/"elevation_up"\s*:\s*([\d.]+)/);
-    const dateMatch = pageHtml.match(/"date"\s*:\s*"([^"]+)"/);
-
-    const distance = distMatch ? (parseFloat(distMatch[1]) / 1000).toFixed(1) : null;
-    const elevation = elevMatch ? Math.round(parseFloat(elevMatch[1])) : null;
-    const date = dateMatch ? dateMatch[1].split('T')[0] : new Date().toISOString().split('T')[0];
-
-    // Construit le GPX
-    let gpx = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="Trial Tracker" xmlns="http://www.topografix.com/GPX/1/1">
-  <metadata><name>${tourName.replace(/[<>&"]/g, '')}</name></metadata>
-  <trk>
-    <name>${tourName.replace(/[<>&"]/g, '')}</name>
-    <trkseg>\n`;
-
-    uniquePoints.forEach(pt => {
-      const ele = pt.alt != null ? `\n        <ele>${pt.alt.toFixed(1)}</ele>` : '';
-      gpx += `      <trkpt lat="${pt.lat}" lon="${pt.lng}">${ele}\n      </trkpt>\n`;
-    });
-
-    gpx += `    </trkseg>\n  </trk>\n</gpx>`;
-
-    console.log(`Komoot import: ${uniquePoints.length} points, "${tourName}"`);
-
-    res.json({ gpx, name: tourName, date, type: 'trail', distance, elevation });
-
-  } catch (e) {
-    console.error('Komoot import error:', e);
-    res.status(500).json({ error: 'Erreur lors de la récupération : ' + e.message });
-  }
-});
-
-// ═══════════════════════════════
 //  ROUTES SESSION ACTIVE
 // ═══════════════════════════════
 
+// ── Helpers snap-to-route ──
+function haversineM(a, b) {
+  const R = 6371000;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const x = Math.sin(dLat/2)**2 +
+    Math.cos(a.lat * Math.PI/180) * Math.cos(b.lat * Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+
+function parseGPXPoints(gpxString) {
+  const points = [];
+  const regex = /<trkpt[^>]+lat="([\d.-]+)"[^>]+lon="([\d.-]+)"[^>]*>(?:[\s\S]*?<ele>([\d.-]+)<\/ele>)?/g;
+  let m;
+  while ((m = regex.exec(gpxString)) !== null) {
+    points.push({
+      lat: parseFloat(m[1]),
+      lng: parseFloat(m[2]),
+      ele: m[3] ? parseFloat(m[3]) : null
+    });
+  }
+  // Calcule distances cumulées
+  let cum = 0;
+  return points.map((p, i) => {
+    if (i > 0) {
+      const prev = points[i-1];
+      const R = 6371000;
+      const dLat = (p.lat-prev.lat)*Math.PI/180;
+      const dLng = (p.lng-prev.lng)*Math.PI/180;
+      const a = Math.sin(dLat/2)**2 + Math.cos(prev.lat*Math.PI/180)*Math.cos(p.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+      cum += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+    return { ...p, distM: cum };
+  });
+}
+
+function findClosestPoint(points, lat, lng) {
+  let bestIdx = 0, bestDist = Infinity;
+  points.forEach((p, i) => {
+    const d = haversineM({ lat, lng }, p);
+    if (d < bestDist) { bestDist = d; bestIdx = i; }
+  });
+  return { idx: bestIdx, distM: bestDist, point: points[bestIdx] };
+}
+
+// Pilote : envoie sa position avec snap-to-route
 app.post('/api/position', (req, res) => {
   const { lat, lng, timestamp, accuracy } = req.body;
-  currentPosition = { lat, lng, timestamp, accuracy, updatedAt: Date.now() };
+
+  let snapped = null;
+  let distFromRoute = null;
+  let distFromStart = null;
+  let routeProgress = null;
+  let startWarning = false;
+
+  // Si on a un GPX chargé, on fait le snap-to-route
+  if (activeSession && activeSession.gpx) {
+    const points = parseGPXPoints(activeSession.gpx);
+
+    if (points.length > 1) {
+      const totalDistM = points[points.length - 1].distM;
+
+      // Vérifie la proximité du point de départ (< 2km)
+      const distToStart = haversineM({ lat, lng }, points[0]);
+      const isFirstPosition = !activeSession.breadcrumbs || activeSession.breadcrumbs.length === 0;
+
+      if (isFirstPosition && distToStart > 2000) {
+        startWarning = true;
+        // On continue quand même mais on avertit
+      }
+
+      // Snap to route : trouve le point du tracé le plus proche
+      const closest = findClosestPoint(points, lat, lng);
+      distFromRoute = Math.round(closest.distM);
+      snapped = { lat: closest.point.lat, lng: closest.point.lng, ele: closest.point.ele };
+      routeProgress = totalDistM > 0 ? (closest.point.distM / totalDistM) : 0;
+      distFromStart = Math.round(closest.point.distM);
+    }
+  }
+
+  currentPosition = {
+    lat, lng,
+    snappedLat: snapped?.lat ?? lat,
+    snappedLng: snapped?.lng ?? lng,
+    snappedEle: snapped?.ele ?? null,
+    distFromRoute,
+    distFromStart,
+    routeProgress,
+    timestamp,
+    accuracy,
+    updatedAt: Date.now(),
+    startWarning
+  };
+
+  // ── Calcule vitesse et ETA si course démarrée ──
+  if (activeSession?.raceInfo?.startTime && distFromStart !== null) {
+    const elapsedMs   = Date.now() - activeSession.raceInfo.startTime;
+    const elapsedH    = elapsedMs / 3600000;
+    const distDoneKm  = distFromStart / 1000;
+    const totalDistKm = activeSession.gpx ? parseGPXPoints(activeSession.gpx).slice(-1)[0].distM / 1000 : null;
+    const speedKmh    = elapsedH > 0 && distDoneKm > 0.05 ? distDoneKm / elapsedH : null;
+    const remainKm    = totalDistKm ? totalDistKm - distDoneKm : null;
+    const etaMs       = speedKmh && remainKm ? (remainKm / speedKmh) * 3600000 : null;
+    const etaTime     = etaMs ? new Date(Date.now() + etaMs) : null;
+
+    currentPosition.speed  = speedKmh ? Math.round(speedKmh * 10) / 10 : null;
+    currentPosition.etaStr = etaTime
+      ? etaTime.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })
+      : null;
+  }
+
   if (activeSession) {
     activeSession.lastPosition = currentPosition;
     if (!activeSession.breadcrumbs) activeSession.breadcrumbs = [];
-    activeSession.breadcrumbs.push({ lat, lng, timestamp, accuracy });
+    activeSession.breadcrumbs.push({
+      lat, lng,
+      snappedLat: snapped?.lat ?? lat,
+      snappedLng: snapped?.lng ?? lng,
+      distFromRoute,
+      routeProgress,
+      timestamp,
+      accuracy
+    });
     writeJSON(ACTIVE_FILE, activeSession);
   }
-  console.log(`Position reçue: ${lat}, ${lng}`);
-  res.json({ success: true });
+
+  console.log(`Position reçue: ${lat}, ${lng} → snap à ${distFromRoute ?? '?'}m du tracé (${Math.round((routeProgress??0)*100)}%)`);
+  res.json({ success: true, snapped, distFromRoute, routeProgress, startWarning });
 });
 
 app.get('/api/position', (req, res) => {
+  // Compte les visiteurs uniques via IP
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+  if (ip && ip !== '::1' && ip !== '127.0.0.1') sessionVisitors.add(ip);
+
   res.json({
-    position: currentPosition,
+    position:      currentPosition,
     sessionActive: !!activeSession,
-    breadcrumbs: activeSession ? activeSession.breadcrumbs || [] : []
+    breadcrumbs:   activeSession ? activeSession.breadcrumbs || [] : [],
+    raceInfo:      activeSession ? activeSession.raceInfo || null : null,
+    visitors:      sessionVisitors.size
   });
+});
+
+// Pilote : démarre la course (vérifie position < 500m du départ)
+app.post('/api/race/start', (req, res) => {
+  const { lat, lng } = req.body;
+  if (!activeSession || !activeSession.gpx) {
+    return res.status(400).json({ error: 'Aucune session active avec GPX' });
+  }
+
+  const points = parseGPXPoints(activeSession.gpx);
+  if (points.length < 2) return res.status(400).json({ error: 'GPX invalide' });
+
+  // Vérifie position < 500m du départ
+  const distToStart = haversineM({ lat, lng }, points[0]);
+  if (distToStart > 500) {
+    return res.status(400).json({
+      error: `Tu es à ${Math.round(distToStart)}m du départ. Rapproche-toi à moins de 500m pour démarrer.`,
+      distToStart: Math.round(distToStart)
+    });
+  }
+
+  // Vérifie que la position n'est pas à plus de 50% du circuit
+  const totalDistM = points[points.length-1].distM;
+  const closest    = findClosestPoint(points, lat, lng);
+  const progress   = closest.point.distM / totalDistM;
+  if (progress > 0.5) {
+    return res.status(400).json({
+      error: `Ta position correspond à ${Math.round(progress*100)}% du parcours. Repars du début.`
+    });
+  }
+
+  const startTime = Date.now();
+  activeSession.raceInfo = {
+    startTime,
+    startLat: lat,
+    startLng: lng
+  };
+  writeJSON(ACTIVE_FILE, activeSession);
+
+  console.log(`Course démarrée à ${new Date(startTime).toLocaleTimeString('fr-FR')}`);
+  res.json({ success: true, startTime });
 });
 
 app.post('/api/gpx', upload.single('gpx'), (req, res) => {
@@ -436,16 +456,18 @@ app.post('/api/gpx', upload.single('gpx'), (req, res) => {
 
   const { name, date, type } = req.body;
   activeSession = {
-    id:          Date.now().toString(),
-    name:        name || 'Sortie sans titre',
-    date:        date || new Date().toISOString().split('T')[0],
-    type:        type || 'trail',
-    gpx:         gpxData,
-    startedAt:   Date.now(),
+    id:           Date.now().toString(),
+    name:         name || 'Sortie sans titre',
+    date:         date || new Date().toISOString().split('T')[0],
+    type:         type || 'trail',
+    gpx:          gpxData,
+    startedAt:    Date.now(),
     lastPosition: null,
-    breadcrumbs: []
+    breadcrumbs:  [],
+    raceInfo:     null
   };
   currentPosition = null;
+  sessionVisitors = new Set(); // reset visiteurs
   writeJSON(ACTIVE_FILE, activeSession);
   res.json({ success: true, session: activeSession });
 });
