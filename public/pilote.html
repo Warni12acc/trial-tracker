@@ -588,7 +588,9 @@
         </div>
         <div class="visitors-badge">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <span id="visitorsCount"><strong>0</strong> spectateur(s) en ligne</span>
+          <span id="visitorsCount"><strong>0</strong> en ligne</span>
+          <span style="color:var(--border)">·</span>
+          <span id="visitorsCumul" style="color:var(--muted)"><strong style="color:var(--text)">0</strong> total</span>
         </div>
       </div>
     </div>
@@ -723,12 +725,45 @@
       const data = await res.json();
       if (data.visitors !== undefined) {
         document.getElementById('visitorsCount').innerHTML =
-          `<strong>${data.visitors}</strong> spectateur(s) en ligne`;
+          `<strong>${data.visitors}</strong> en ligne`;
+      }
+      if (data.visitorsCumul !== undefined) {
+        document.getElementById('visitorsCumul').innerHTML =
+          `<strong style="color:var(--text)">${data.visitorsCumul}</strong> total`;
       }
       if (data.position?.speed !== undefined)
         showRaceBlock(data.position);
     } catch {}
   }, 15000);
+
+  // ── Resync au retour sur la page (écran déverrouillé, onglet réactivé) ──
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState !== 'visible') return;
+
+    try {
+      const res  = await fetch(`${API_URL}/api/session/active`);
+      const data = await res.json();
+      if (!data.session) return;
+
+      // Resync chrono si course démarrée
+      if (data.session.raceInfo?.startTime && !raceStartTime) {
+        raceStartTime = data.session.raceInfo.startTime;
+        launchChronoTick();
+        showRaceBlock();
+        document.getElementById('startBtn').style.display = 'none';
+      } else if (raceStartTime) {
+        // Le chrono était actif : recalibrer l'affichage
+        updateChronoDisplay();
+      }
+
+      // Resync auto-send : repart le timer depuis le début si actif
+      if (autoActive) {
+        clearTimeout(autoTimer);
+        clearInterval(autoTickTimer);
+        startAutoTimer();
+      }
+    } catch {}
+  });
 
   function toggleAuto() {
     autoActive = !autoActive;

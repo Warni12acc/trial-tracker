@@ -77,7 +77,8 @@ let currentPosition = activeSession ? activeSession.lastPosition || null : null;
 let stravaTokens    = readJSON(STRAVA_FILE, null);
 
 // ── Compteur de visiteurs uniques (page famille) ──
-let sessionVisitors = new Set(); // IPs uniques, remis à zéro à chaque session
+let sessionVisitors      = new Set();  // IPs uniques actives
+let sessionVisitorsCumul = 0;          // total cumulatif depuis début session
 
 // ── Refresh Strava token si expiré ──
 async function getValidStravaToken() {
@@ -404,16 +405,20 @@ app.post('/api/position', (req, res) => {
 });
 
 app.get('/api/position', (req, res) => {
-  // Compte les visiteurs uniques via IP
   const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
-  if (ip && ip !== '::1' && ip !== '127.0.0.1') sessionVisitors.add(ip);
+  if (ip && ip !== '::1' && ip !== '127.0.0.1') {
+    const isNew = !sessionVisitors.has(ip);
+    sessionVisitors.add(ip);
+    if (isNew) sessionVisitorsCumul++;
+  }
 
   res.json({
-    position:      currentPosition,
-    sessionActive: !!activeSession,
-    breadcrumbs:   activeSession ? activeSession.breadcrumbs || [] : [],
-    raceInfo:      activeSession ? activeSession.raceInfo || null : null,
-    visitors:      sessionVisitors.size
+    position:        currentPosition,
+    sessionActive:   !!activeSession,
+    breadcrumbs:     activeSession ? activeSession.breadcrumbs || [] : [],
+    raceInfo:        activeSession ? activeSession.raceInfo || null : null,
+    visitors:        sessionVisitors.size,
+    visitorsCumul:   sessionVisitorsCumul
   });
 });
 
@@ -481,7 +486,8 @@ app.post('/api/gpx', upload.single('gpx'), (req, res) => {
     raceInfo:     null
   };
   currentPosition = null;
-  sessionVisitors = new Set(); // reset visiteurs
+  sessionVisitors      = new Set();
+  sessionVisitorsCumul = 0;
   writeJSON(ACTIVE_FILE, activeSession);
   res.json({ success: true, session: activeSession });
 });

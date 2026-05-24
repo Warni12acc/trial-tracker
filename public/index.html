@@ -33,9 +33,23 @@
       overflow: hidden; display: flex; flex-direction: column;
     }
 
-    #map-container { flex: 1; position: relative; min-height: 0; }
+    #map-container { flex: 1; position: relative; min-height: 200px; }
     #map { position: absolute; inset: 0; }
     .leaflet-tile-pane { filter: saturate(0.65) brightness(0.82); }
+
+    /* ── DESKTOP: 2-column layout ── */
+    @media (min-width: 768px) {
+      body { flex-direction: row; }
+      #map-container { flex: 1; height: 100vh; height: 100dvh; min-height: 0; }
+      #elev-panel {
+        width: 360px !important; flex-shrink: 0; max-height: none !important;
+        height: 100vh; height: 100dvh;
+        border-top: none; border-left: 1px solid rgba(255,255,255,0.1);
+        overflow-y: auto;
+      }
+      .elev-chart-wrap { height: 180px !important; }
+      .no-session-overlay { position: fixed !important; width: 100% !important; }
+    }
 
     /* ── TOP BAR ── */
     .top-bar {
@@ -89,7 +103,10 @@
       flex-shrink: 0; background: var(--surface2);
       border-top: 1px solid var(--border);
       display: none; flex-direction: column;
+      max-height: 44vh;
     }
+
+    .elev-chart-wrap { position: relative; height: 120px; }
 
     .stats-strip {
       display: flex; align-items: stretch;
