@@ -77,13 +77,30 @@ let currentPosition = activeSession ? activeSession.lastPosition || null : null;
 let stravaTokens    = readJSON(STRAVA_FILE, null);
 
 // ── Compteur de visiteurs (page famille uniquement) ──
-// Map IP -> timestamp dernière requête
-let visitorLastSeen  = new Map();
-let sessionVisitorsCumul = 0;
+let visitorLastSeen      = new Map();
+let sessionVisitorsCumul = readJSON(ACTIVE_FILE, null)?.visitorsCumul || 0;
+
+// Restaure visitorLastSeen depuis le fichier si session active
+if (activeSession) {
+  const saved = readJSON(ACTIVE_FILE, null);
+  if (saved?.visitorLastSeen) {
+    visitorLastSeen = new Map(Object.entries(saved.visitorLastSeen));
+  }
+}
+
+function saveVisitors() {
+  if (!activeSession) return;
+  try {
+    const data = readJSON(ACTIVE_FILE, {});
+    data.visitorsCumul   = sessionVisitorsCumul;
+    data.visitorLastSeen = Object.fromEntries(visitorLastSeen);
+    writeJSON(ACTIVE_FILE, data);
+  } catch {}
+}
 
 function getVisitorStats() {
   const now = Date.now();
-  const LIVE_WINDOW = 2 * 60 * 1000; // 2 minutes = "en ligne"
+  const LIVE_WINDOW = 2 * 60 * 1000;
   let live = 0;
   visitorLastSeen.forEach(ts => { if (now - ts < LIVE_WINDOW) live++; });
   return { live, cumul: sessionVisitorsCumul };
@@ -424,6 +441,7 @@ app.get('/api/position', (req, res) => {
       const isNew = !visitorLastSeen.has(ip);
       visitorLastSeen.set(ip, Date.now());
       if (isNew) sessionVisitorsCumul++;
+      saveVisitors();
     }
   }
 
@@ -504,8 +522,7 @@ app.post('/api/gpx', upload.single('gpx'), (req, res) => {
   };
   currentPosition      = null;
   visitorLastSeen      = new Map();
-  sessionVisitorsCumul = 0;
-  writeJSON(ACTIVE_FILE, activeSession);
+  sessionVisitorsCumul = 0;  writeJSON(ACTIVE_FILE, activeSession);
   res.json({ success: true, session: activeSession });
 });
 
