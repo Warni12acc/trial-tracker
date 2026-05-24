@@ -434,9 +434,9 @@ app.post('/api/race/start', (req, res) => {
 
   // Vérifie position < 500m du départ
   const distToStart = haversineM({ lat, lng }, points[0]);
-  if (distToStart > 500) {
+  if (distToStart > 1000) {
     return res.status(400).json({
-      error: `Tu es à ${Math.round(distToStart)}m du départ. Rapproche-toi à moins de 500m pour démarrer.`,
+      error: `Tu es à ${Math.round(distToStart)}m du départ. Rapproche-toi à moins de 1000m pour démarrer.`,
       distToStart: Math.round(distToStart)
     });
   }

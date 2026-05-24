@@ -37,18 +37,11 @@
     #map { position: absolute; inset: 0; }
     .leaflet-tile-pane { filter: saturate(0.65) brightness(0.82); }
 
-    /* ── DESKTOP: 2-column layout ── */
+    /* ── DESKTOP: carte occupe au moins 55% de l'écran ── */
     @media (min-width: 768px) {
-      body { flex-direction: row; }
-      #map-container { flex: 1; height: 100vh; height: 100dvh; min-height: 0; }
-      #elev-panel {
-        width: 360px !important; flex-shrink: 0; max-height: none !important;
-        height: 100vh; height: 100dvh;
-        border-top: none; border-left: 1px solid rgba(255,255,255,0.1);
-        overflow-y: auto;
-      }
-      .elev-chart-wrap { height: 180px !important; }
-      .no-session-overlay { position: fixed !important; width: 100% !important; }
+      #map-container { min-height: 55vh; }
+      #elev-panel { max-height: 45vh; }
+      .elev-chart-wrap { height: 160px !important; }
     }
 
     /* ── TOP BAR ── */
