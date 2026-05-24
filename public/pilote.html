@@ -288,21 +288,21 @@
     #elevMini { width: 100%; height: 100%; display: block; }
 
     /* ══ SEND BUTTON ══ */
-    .send-section { padding: 20px 16px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-    .send-zone { width: 100%; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 20px; background: var(--surface); border-radius: 20px; border: 1px solid var(--border); overflow: hidden; }
+    .send-section { padding: 12px 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .send-zone { width: 100%; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 18px 20px; background: var(--surface); border-radius: 20px; border: 1px solid var(--border); overflow: hidden; }
     .send-zone::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, var(--orange-glow) 0%, transparent 70%); pointer-events: none; opacity: 0; transition: opacity 0.4s; }
     .send-zone.sending::before { opacity: 1; }
-    .send-btn { width: 120px; height: 120px; border-radius: 50%; border: 2px solid var(--orange); background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--text); position: relative; overflow: hidden; transition: transform 0.15s; -webkit-appearance: none; }
+    .send-btn { width: 96px; height: 96px; border-radius: 50%; border: 2px solid var(--orange); background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: var(--text); position: relative; overflow: hidden; transition: transform 0.15s; -webkit-appearance: none; }
     .send-btn::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--orange); transform: scale(0); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
     .send-btn:active { transform: scale(0.93); }
     .send-btn.sending::before { transform: scale(1); }
-    .send-btn .btn-content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
-    .send-btn svg { width: 32px; height: 32px; }
-    .send-btn .btn-label { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px; }
+    .send-btn .btn-content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .send-btn svg { width: 26px; height: 26px; }
+    .send-btn .btn-label { font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 2px; }
     @keyframes ring-pulse { 0%{box-shadow:0 0 0 0 rgba(232,80,10,0.4);}70%{box-shadow:0 0 0 16px rgba(232,80,10,0);}100%{box-shadow:0 0 0 0 rgba(232,80,10,0);} }
     .send-btn.sending { animation: ring-pulse 1.2s ease-out infinite; }
-    .send-status { text-align: center; min-height: 36px; }
-    .status-text { font-size: 14px; font-weight: 500; color: var(--muted); transition: color 0.3s; }
+    .send-status { text-align: center; min-height: 30px; }
+    .status-text { font-size: 13px; font-weight: 500; color: var(--muted); transition: color 0.3s; }
     .status-text.success { color: var(--green); }
     .status-text.error   { color: var(--red); }
     .status-text.sending { color: var(--orange); }

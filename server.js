@@ -358,16 +358,30 @@ app.post('/api/position', (req, res) => {
     const elapsedMs   = Date.now() - activeSession.raceInfo.startTime;
     const elapsedH    = elapsedMs / 3600000;
     const distDoneKm  = distFromStart / 1000;
-    const totalDistKm = activeSession.gpx ? parseGPXPoints(activeSession.gpx).slice(-1)[0].distM / 1000 : null;
-    const speedKmh    = elapsedH > 0 && distDoneKm > 0.05 ? distDoneKm / elapsedH : null;
-    const remainKm    = totalDistKm ? totalDistKm - distDoneKm : null;
-    const etaMs       = speedKmh && remainKm ? (remainKm / speedKmh) * 3600000 : null;
-    const etaTime     = etaMs ? new Date(Date.now() + etaMs) : null;
 
-    currentPosition.speed  = speedKmh ? Math.round(speedKmh * 10) / 10 : null;
-    currentPosition.etaStr = etaTime
-      ? etaTime.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })
+    // Récupère la distance totale depuis le GPX
+    const gpxPts      = parseGPXPoints(activeSession.gpx);
+    const totalDistKm = gpxPts.length > 0 ? gpxPts[gpxPts.length - 1].distM / 1000 : null;
+    const remainKm    = totalDistKm ? Math.max(0, totalDistKm - distDoneKm) : null;
+
+    // Vitesse moyenne = distance parcourue / temps écoulé (min 50m parcourus)
+    const speedKmh = elapsedH > 0 && distDoneKm > 0.05
+      ? Math.round((distDoneKm / elapsedH) * 10) / 10
       : null;
+
+    // ETA = heure de DÉPART + (distance totale / vitesse)
+    // Formule : tempsTotal = distanceTotale / vitesse → arrivée = départ + tempsTotal
+    let etaStr = null;
+    if (speedKmh && totalDistKm) {
+      const totalTimeH = totalDistKm / speedKmh;           // temps total estimé en heures
+      const etaMs      = activeSession.raceInfo.startTime + totalTimeH * 3600000;
+      // L'arrivée ne peut pas être avant maintenant
+      const etaFinal   = Math.max(etaMs, Date.now() + 60000);
+      etaStr = new Date(etaFinal).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+    }
+
+    currentPosition.speed  = speedKmh;
+    currentPosition.etaStr = etaStr;
   }
 
   if (activeSession) {
