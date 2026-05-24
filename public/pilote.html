@@ -721,7 +721,9 @@
   setInterval(async () => {
     if (!raceStartTime) return;
     try {
-      const res  = await fetch(`${API_URL}/api/position`);
+      const res  = await fetch(`${API_URL}/api/position`, {
+        headers: { 'x-client': 'pilot' }
+      });
       const data = await res.json();
       if (data.visitors !== undefined) {
         document.getElementById('visitorsCount').innerHTML =
@@ -741,7 +743,9 @@
     if (document.visibilityState !== 'visible') return;
 
     try {
-      const res  = await fetch(`${API_URL}/api/session/active`);
+      const res  = await fetch(`${API_URL}/api/session/active`, {
+        headers: { 'x-client': 'pilot' }
+      });
       const data = await res.json();
       if (!data.session) return;
 

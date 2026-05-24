@@ -76,9 +76,18 @@ let activeSession   = readJSON(ACTIVE_FILE, null);
 let currentPosition = activeSession ? activeSession.lastPosition || null : null;
 let stravaTokens    = readJSON(STRAVA_FILE, null);
 
-// ── Compteur de visiteurs uniques (page famille) ──
-let sessionVisitors      = new Set();  // IPs uniques actives
-let sessionVisitorsCumul = 0;          // total cumulatif depuis début session
+// ── Compteur de visiteurs (page famille uniquement) ──
+// Map IP -> timestamp dernière requête
+let visitorLastSeen  = new Map();
+let sessionVisitorsCumul = 0;
+
+function getVisitorStats() {
+  const now = Date.now();
+  const LIVE_WINDOW = 2 * 60 * 1000; // 2 minutes = "en ligne"
+  let live = 0;
+  visitorLastSeen.forEach(ts => { if (now - ts < LIVE_WINDOW) live++; });
+  return { live, cumul: sessionVisitorsCumul };
+}
 
 // ── Refresh Strava token si expiré ──
 async function getValidStravaToken() {
@@ -405,20 +414,28 @@ app.post('/api/position', (req, res) => {
 });
 
 app.get('/api/position', (req, res) => {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
-  if (ip && ip !== '::1' && ip !== '127.0.0.1') {
-    const isNew = !sessionVisitors.has(ip);
-    sessionVisitors.add(ip);
-    if (isNew) sessionVisitorsCumul++;
+  // N'incrémente les visiteurs QUE si ce n'est pas le pilote
+  // Le pilote envoie un header x-client: pilot
+  const isPilot = req.headers['x-client'] === 'pilot';
+
+  if (!isPilot) {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+    if (ip && ip !== '::1' && ip !== '127.0.0.1') {
+      const isNew = !visitorLastSeen.has(ip);
+      visitorLastSeen.set(ip, Date.now());
+      if (isNew) sessionVisitorsCumul++;
+    }
   }
+
+  const { live, cumul } = getVisitorStats();
 
   res.json({
     position:        currentPosition,
     sessionActive:   !!activeSession,
     breadcrumbs:     activeSession ? activeSession.breadcrumbs || [] : [],
     raceInfo:        activeSession ? activeSession.raceInfo || null : null,
-    visitors:        sessionVisitors.size,
-    visitorsCumul:   sessionVisitorsCumul
+    visitors:        live,
+    visitorsCumul:   cumul
   });
 });
 
@@ -485,8 +502,8 @@ app.post('/api/gpx', upload.single('gpx'), (req, res) => {
     breadcrumbs:  [],
     raceInfo:     null
   };
-  currentPosition = null;
-  sessionVisitors      = new Set();
+  currentPosition      = null;
+  visitorLastSeen      = new Map();
   sessionVisitorsCumul = 0;
   writeJSON(ACTIVE_FILE, activeSession);
   res.json({ success: true, session: activeSession });
