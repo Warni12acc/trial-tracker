@@ -597,13 +597,14 @@ app.patch('/api/sessions/:id/stats', (req, res) => {
 // Liste tous les projets (sans le GPX pour alléger)
 app.get('/api/projects', (req, res) => {
   const list = projects.map(p => ({
-    id:       p.id,
-    name:     p.name,
-    date:     p.date,
-    notes:    p.notes || '',
-    status:   p.status || 'planned',
-    type:     p.type || 'trail',
-    stats:    p.stats || null,
+    id:        p.id,
+    name:      p.name,
+    date:      p.date,
+    notes:     p.notes || '',
+    status:    p.status || 'planned',
+    type:      p.type || 'trail',
+    stats:     p.stats || null,
+    hasGpx:    !!p.gpx,
     createdAt: p.createdAt
   }));
   res.json({ projects: list });
@@ -668,7 +669,7 @@ app.delete('/api/projects/:id', (req, res) => {
 app.post('/api/projects/:id/launch', (req, res) => {
   const project = projects.find(p => p.id === req.params.id);
   if (!project) return res.status(404).json({ error: 'Projet introuvable' });
-  if (!project.gpx) return res.status(400).json({ error: 'Ce projet n\'a pas de GPX' });
+  if (!project.gpx) return res.status(400).json({ error: 'Ce projet n\'a pas de GPX. Modifie le projet pour en ajouter un.' });
 
   activeSession = {
     id:           Date.now().toString(),
@@ -687,11 +688,11 @@ app.post('/api/projects/:id/launch', (req, res) => {
   sessionVisitorsCumul = 0;
   writeJSON(ACTIVE_FILE, activeSession);
 
-  // Marque le projet comme "en cours"
   project.status = 'active';
   writeJSON(PROJECTS_FILE, projects);
 
-  res.json({ success: true, session: activeSession });
+  // Renvoie le GPX directement dans la réponse
+  res.json({ success: true, session: activeSession, gpx: project.gpx });
 });
 
 // ═══════════════════════════════

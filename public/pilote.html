@@ -1276,6 +1276,7 @@
     e.stopPropagation();
     const isRunning = document.getElementById('sessionDot').classList.contains('active');
     if (isRunning && !confirm('Une session est en cours. La remplacer par ce projet ?')) return;
+
     try {
       document.getElementById('fetchingText').textContent = 'Chargement du projet…';
       document.getElementById('fetchingOverlay').classList.add('visible');
@@ -1283,33 +1284,48 @@
       const res  = await fetch(`${API_URL}/api/projects/${id}/launch`, { method: 'POST' });
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || 'Erreur');
+      if (!res.ok) {
+        document.getElementById('fetchingOverlay').classList.remove('visible');
+        alert(data.error || 'Erreur lors du lancement');
+        return;
+      }
 
-      // Récupère le GPX et affiche
-      const gpxRes  = await fetch(`${API_URL}/api/gpx`);
-      const gpxData = await gpxRes.json();
-
-      if (gpxData.gpx) {
-        gpxPoints = parseGPX(gpxData.gpx);
-        showMapSection(); drawMiniElev(); drawGPXOnMap(gpxPoints);
+      // GPX renvoyé directement dans la réponse
+      if (data.gpx) {
+        gpxPoints = parseGPX(data.gpx);
+        showMapSection();
+        drawMiniElev();
+        drawGPXOnMap(gpxPoints);
         document.getElementById('saveRouteBtn').classList.add('visible');
       }
 
       setSessionActive(true);
       currentProjectId = id;
+
       const proj = allProjects.find(p => p.id === id);
       if (proj) {
         document.getElementById('gpxDropText').textContent = proj.name;
         document.getElementById('gpxDropSub').textContent  = gpxPoints.length > 0
           ? `${gpxPoints.length} pts · ${totalDist.toFixed(1)} km`
-          : 'GPX chargé';
+          : 'Parcours chargé';
         document.getElementById('gpxDrop').classList.add('loaded');
         document.getElementById('sessionName').value = proj.name;
       }
 
+      // Reset chrono et historique
+      sendCount = 0; historyItems = [];
+      raceStartTime = null;
+      clearInterval(raceTickTimer); raceTickTimer = null;
+      document.getElementById('raceBlock').classList.remove('visible');
+      document.getElementById('startBtn').style.display = '';
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('sendCount').textContent = '0';
+      document.getElementById('historySection').style.display = 'none';
+
       closeDrawer();
       document.getElementById('fetchingOverlay').classList.remove('visible');
       loadProjects();
+
     } catch(err) {
       document.getElementById('fetchingOverlay').classList.remove('visible');
       alert('Erreur : ' + err.message);
