@@ -14,9 +14,10 @@ const upload   = multer({ dest: 'uploads/' });
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
-const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
-const ACTIVE_FILE   = path.join(DATA_DIR, 'active.json');
-const STRAVA_FILE   = path.join(DATA_DIR, 'strava.json');
+const SESSIONS_FILE  = path.join(DATA_DIR, 'sessions.json');
+const ACTIVE_FILE    = path.join(DATA_DIR, 'active.json');
+const STRAVA_FILE    = path.join(DATA_DIR, 'strava.json');
+const PROJECTS_FILE  = path.join(DATA_DIR, 'projects.json');
 
 // ── Strava config depuis variables d'environnement Render ──
 const STRAVA_CLIENT_ID     = process.env.STRAVA_CLIENT_ID;
@@ -75,6 +76,7 @@ let sessions        = readJSON(SESSIONS_FILE, []);
 let activeSession   = readJSON(ACTIVE_FILE, null);
 let currentPosition = activeSession ? activeSession.lastPosition || null : null;
 let stravaTokens    = readJSON(STRAVA_FILE, null);
+let projects        = readJSON(PROJECTS_FILE, []);
 
 // ── Compteur de visiteurs (page famille uniquement) ──
 let visitorLastSeen      = new Map();
@@ -536,10 +538,19 @@ app.get('/api/session/active', (req, res) => {
 
 app.post('/api/session/end', (req, res) => {
   if (activeSession) {
-    activeSession.endedAt    = Date.now();
+    activeSession.endedAt      = Date.now();
     activeSession.lastPosition = currentPosition;
     sessions.unshift(activeSession);
     writeJSON(SESSIONS_FILE, sessions);
+
+    // Marque le projet lié comme terminé
+    if (activeSession.projectId) {
+      const proj = projects.find(p => p.id === activeSession.projectId);
+      if (proj) {
+        proj.status = 'done';
+        writeJSON(PROJECTS_FILE, projects);
+      }
+    }
   }
   activeSession   = null;
   currentPosition = null;
@@ -577,6 +588,110 @@ app.patch('/api/sessions/:id/stats', (req, res) => {
   session.stats = req.body;
   writeJSON(SESSIONS_FILE, sessions);
   res.json({ success: true });
+});
+
+// ═══════════════════════════════
+//  ROUTES PROJETS
+// ═══════════════════════════════
+
+// Liste tous les projets (sans le GPX pour alléger)
+app.get('/api/projects', (req, res) => {
+  const list = projects.map(p => ({
+    id:       p.id,
+    name:     p.name,
+    date:     p.date,
+    notes:    p.notes || '',
+    status:   p.status || 'planned',
+    type:     p.type || 'trail',
+    stats:    p.stats || null,
+    createdAt: p.createdAt
+  }));
+  res.json({ projects: list });
+});
+
+// Récupère un projet complet (avec GPX)
+app.get('/api/projects/:id', (req, res) => {
+  const project = projects.find(p => p.id === req.params.id);
+  if (!project) return res.status(404).json({ error: 'Projet introuvable' });
+  res.json({ project });
+});
+
+// Crée un projet avec GPX
+app.post('/api/projects', upload.single('gpx'), (req, res) => {
+  let gpxData = null;
+  if (req.file) {
+    gpxData = fs.readFileSync(req.file.path, 'utf8');
+  } else if (req.body.gpxContent) {
+    gpxData = req.body.gpxContent;
+  }
+
+  const { name, date, notes, type } = req.body;
+  const project = {
+    id:        Date.now().toString(),
+    name:      name || 'Projet sans titre',
+    date:      date || '',
+    notes:     notes || '',
+    type:      type || 'trail',
+    status:    'planned',
+    gpx:       gpxData,
+    stats:     null,
+    createdAt: Date.now()
+  };
+
+  projects.unshift(project);
+  writeJSON(PROJECTS_FILE, projects);
+  res.json({ success: true, project });
+});
+
+// Met à jour les infos d'un projet (nom, date, notes, statut)
+app.patch('/api/projects/:id', (req, res) => {
+  const project = projects.find(p => p.id === req.params.id);
+  if (!project) return res.status(404).json({ error: 'Projet introuvable' });
+  const { name, date, notes, status, stats } = req.body;
+  if (name   !== undefined) project.name   = name;
+  if (date   !== undefined) project.date   = date;
+  if (notes  !== undefined) project.notes  = notes;
+  if (status !== undefined) project.status = status;
+  if (stats  !== undefined) project.stats  = stats;
+  writeJSON(PROJECTS_FILE, projects);
+  res.json({ success: true, project });
+});
+
+// Supprime un projet
+app.delete('/api/projects/:id', (req, res) => {
+  projects = projects.filter(p => p.id !== req.params.id);
+  writeJSON(PROJECTS_FILE, projects);
+  res.json({ success: true });
+});
+
+// Lance un projet comme session active
+app.post('/api/projects/:id/launch', (req, res) => {
+  const project = projects.find(p => p.id === req.params.id);
+  if (!project) return res.status(404).json({ error: 'Projet introuvable' });
+  if (!project.gpx) return res.status(400).json({ error: 'Ce projet n\'a pas de GPX' });
+
+  activeSession = {
+    id:           Date.now().toString(),
+    projectId:    project.id,
+    name:         project.name,
+    date:         new Date().toISOString().split('T')[0],
+    type:         project.type || 'trail',
+    gpx:          project.gpx,
+    startedAt:    Date.now(),
+    lastPosition: null,
+    breadcrumbs:  [],
+    raceInfo:     null
+  };
+  currentPosition      = null;
+  visitorLastSeen      = new Map();
+  sessionVisitorsCumul = 0;
+  writeJSON(ACTIVE_FILE, activeSession);
+
+  // Marque le projet comme "en cours"
+  project.status = 'active';
+  writeJSON(PROJECTS_FILE, projects);
+
+  res.json({ success: true, session: activeSession });
 });
 
 // ═══════════════════════════════
