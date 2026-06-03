@@ -731,6 +731,7 @@
   let gpxPoints     = [];
   let totalDist     = 0;
   let stravaPage    = 1;
+  let currentProjectId = null; // ID du projet en cours de session
 
   // ── Auto send ──
   let autoActive    = false;
@@ -945,6 +946,7 @@
   fetch(`${API_URL}/api/session/active`).then(r=>r.json()).then(d => {
     if (d.session) {
       setSessionActive(true);
+      currentProjectId = d.session.projectId || null;
       if (d.session.gpx) {
         gpxPoints = parseGPX(d.session.gpx);
         showMapSection(); drawMiniElev(); drawGPXOnMap(gpxPoints);
@@ -1249,7 +1251,7 @@
       const dist   = p.stats ? `<span class="pc-stat"><strong>${p.stats.dist}</strong> km</span>` : '';
       const elev   = p.stats ? `<span class="pc-stat">D+ <strong>${p.stats.up}</strong>m</span>` : '';
       const noGpx  = !p.hasGpx ? '<div class="pc-no-gpx">⚠ Pas de GPX — ajouter un tracé</div>' : '';
-      const isActive = activeSession?.projectId === p.id;
+      const isActive = sessionActive && currentProjectId === p.id;
       return `
         <div class="project-card ${isActive ? 'active-project' : ''}" id="pc-${p.id}">
           <div class="pc-header">
@@ -1271,7 +1273,7 @@
 
   async function launchProject(id, e) {
     e.stopPropagation();
-    if (activeSession && !confirm('Une session est en cours. La remplacer par ce projet ?')) return;
+    if (sessionActive && !confirm('Une session est en cours. La remplacer par ce projet ?')) return;
     try {
       document.getElementById('fetchingText').textContent = 'Chargement du projet…';
       document.getElementById('fetchingOverlay').classList.add('visible');
@@ -1292,6 +1294,7 @@
       }
 
       setSessionActive(true);
+      currentProjectId = id;
       const proj = allProjects.find(p => p.id === id);
       if (proj) {
         document.getElementById('gpxDropText').textContent = proj.name;
@@ -1615,6 +1618,7 @@
 
     await fetch(`${API_URL}/api/session/end`,{method:'POST'});
     setSessionActive(false);
+    currentProjectId = null;
     sendCount=0;historyItems=[];
     ['sendCount','lastSendTime'].forEach(id=>document.getElementById(id).textContent=id==='sendCount'?'0':'—');
     document.getElementById('lastAccuracy').textContent='précision —';
