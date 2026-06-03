@@ -723,15 +723,16 @@
   <script>
   const API_URL = window.location.origin;
 
-  let sendCount     = 0;
-  let historyItems  = [];
-  let piloteMap     = null;
-  let gpxLayer      = null;
-  let posMarker     = null;
-  let gpxPoints     = [];
-  let totalDist     = 0;
-  let stravaPage    = 1;
-  let currentProjectId = null; // ID du projet en cours de session
+  let sendCount        = 0;
+  let historyItems     = [];
+  let piloteMap        = null;
+  let gpxLayer         = null;
+  let posMarker        = null;
+  let gpxPoints        = [];
+  let totalDist        = 0;
+  let stravaPage       = 1;
+  let sessionActive    = false; // booléen état session
+  let currentProjectId = null;  // ID du projet en cours
 
   // ── Auto send ──
   let autoActive    = false;
@@ -1593,6 +1594,7 @@
 
   // ── SESSION ──
   function setSessionActive(val){
+    sessionActive = val;
     const dot=document.getElementById('sessionDot'),lbl=document.getElementById('sessionLabel');
     if(val){dot.classList.add('active');lbl.textContent='Session active';}
     else{dot.classList.remove('active');lbl.textContent='Hors session';}
